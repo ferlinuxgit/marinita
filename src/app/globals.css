@@ -140,6 +140,10 @@ a {
   gap: 12px;
 }
 
+.row.start {
+  justify-content: flex-start;
+}
+
 .grid {
   display: grid;
   gap: 20px;
@@ -352,6 +356,11 @@ a {
   min-width: 0;
   display: grid;
   gap: 4px;
+}
+
+.history-link {
+  color: inherit;
+  text-decoration: none;
 }
 
 .history-main strong {
