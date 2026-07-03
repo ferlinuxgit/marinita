@@ -1,0 +1,18 @@
+[03/07/2026  7:49:43,64] [BATCH] Iniciando script 
+[03/07/2026  7:49:43,65] [BATCH] Buscando primer archivo .xlsx... 
+[03/07/2026  7:49:43,66] [BATCH] Archivo de entrada: Fini Comercial Ib‚rica Export 01 Jun 2026 - 30 Jun 2026.xlsx 
+[03/07/2026  7:49:43,67] [BATCH] Archivo de salida: resumen_gastos.xlsx 
+[03/07/2026  7:49:43,68] [BATCH] Generando script PowerShell temporal... 
+[03/07/2026  7:49:43,75] [BATCH] Script PowerShell temporal generado: C:\Users\marina.cano\OneDrive - The Fini Company\Marina\MARINA FINI\PAYHAWK\FINI COMERCIAL IBERICA\Informes\generar informe\temp_agrupa_gastos.ps1 
+[03/07/2026  7:49:43,76] [BATCH] Ejecutando PowerShell... 
+[PS] Iniciando PowerShell
+[PS] Importando ImportExcel
+C:\Users\marina.cano\OneDrive - The Fini Company\Marina\MARINA FINI\PAYHAWK\FINI COMERCIAL IBERICA\Informes\generar 
+informe\temp_agrupa_gastos.ps1 : [PS] ERROR: No se carg¢ el m¢dulo 'ImportExcel' especificado porque no se encontr¢ 
+ning£n archivo de m¢dulo v lido en ning£n directorio de m¢dulo.
+    + CategoryInfo          : NotSpecified: (:) [Write-Error], WriteErrorException
+    + FullyQualifiedErrorId : Microsoft.PowerShell.Commands.WriteErrorException,temp_agrupa_gastos.ps1
+ 
+[03/07/2026  7:49:45,60] [BATCH] Eliminando script temporal... 
+[03/07/2026  7:49:45,61] [BATCH] ERROR: No se pudo generar resumen_gastos.xlsx. 
+[03/07/2026  7:49:45,61] [BATCH] Script finalizado. 
