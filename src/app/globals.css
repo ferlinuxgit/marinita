@@ -228,6 +228,39 @@ a {
   background: white;
 }
 
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.dropzone {
+  min-height: 118px;
+  width: 100%;
+  border: 1px dashed var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  display: grid;
+  place-items: center;
+  gap: 10px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  text-align: center;
+}
+
+.dropzone.dragging,
+.dropzone:hover {
+  border-color: var(--primary);
+  color: var(--primary-strong);
+  background: #e8f3ef;
+}
+
 .button {
   min-height: 40px;
   border: 1px solid transparent;

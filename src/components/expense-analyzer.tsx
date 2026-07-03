@@ -1,7 +1,7 @@
 "use client";
 
 import { Download, FileUp, Loader2 } from "lucide-react";
-import { FormEvent, useMemo, useState } from "react";
+import { DragEvent, FormEvent, useMemo, useRef, useState } from "react";
 
 type SummaryRow = {
   accountCode: string;
@@ -34,6 +34,8 @@ export function ExpenseAnalyzer() {
   const [result, setResult] = useState<ReportResponse | null>(null);
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const previewRows = useMemo(() => result?.rows.slice(0, 50) ?? [], [result]);
   const groupedTotal = useMemo(
@@ -71,6 +73,40 @@ export function ExpenseAnalyzer() {
     setResult(payload as ReportResponse);
   }
 
+  function selectFile(selectedFile: File | null) {
+    setError("");
+    setResult(null);
+
+    if (!selectedFile) {
+      setFile(null);
+      return;
+    }
+
+    if (!selectedFile.name.toLowerCase().endsWith(".xlsx")) {
+      setFile(null);
+      setError("Solo se admiten archivos .xlsx.");
+      return;
+    }
+
+    setFile(selectedFile);
+  }
+
+  function onDragOver(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setIsDragging(true);
+  }
+
+  function onDragLeave(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+  }
+
+  function onDrop(event: DragEvent<HTMLButtonElement>) {
+    event.preventDefault();
+    setIsDragging(false);
+    selectFile(event.dataTransfer.files.item(0));
+  }
+
   return (
     <div className="grid">
       <section>
@@ -89,12 +125,23 @@ export function ExpenseAnalyzer() {
           <form className="stack" onSubmit={analyze}>
             <div className="field">
               <label htmlFor="file">Excel</label>
+              <button
+                className={`dropzone ${isDragging ? "dragging" : ""}`}
+                onClick={() => fileInputRef.current?.click()}
+                onDragLeave={onDragLeave}
+                onDragOver={onDragOver}
+                onDrop={onDrop}
+                type="button"
+              >
+                <FileUp size={22} />
+                <span>{file ? file.name : "Arrastra un .xlsx o haz click para seleccionarlo"}</span>
+              </button>
               <input
                 accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-                className="input"
+                className="sr-only"
                 id="file"
-                onChange={(event) => setFile(event.target.files?.[0] ?? null)}
-                required
+                onChange={(event) => selectFile(event.target.files?.[0] ?? null)}
+                ref={fileInputRef}
                 type="file"
               />
             </div>
