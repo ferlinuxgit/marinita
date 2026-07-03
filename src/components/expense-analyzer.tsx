@@ -36,6 +36,10 @@ export function ExpenseAnalyzer() {
   const [isPending, setIsPending] = useState(false);
 
   const previewRows = useMemo(() => result?.rows.slice(0, 50) ?? [], [result]);
+  const groupedTotal = useMemo(
+    () => result?.rows.reduce((total, row) => total + row.totalAgrupadoEur, 0) ?? 0,
+    [result],
+  );
 
   async function analyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -138,6 +142,10 @@ export function ExpenseAnalyzer() {
               <div className="metric">
                 <span className="metric-value">{result.report.groupCount}</span>
                 <span className="muted">grupos generados</span>
+              </div>
+              <div className="metric">
+                <span className="metric-value">{formatMoney(groupedTotal)}</span>
+                <span className="muted">total agrupado</span>
               </div>
             </div>
 

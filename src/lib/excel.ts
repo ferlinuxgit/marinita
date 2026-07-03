@@ -196,7 +196,7 @@ export async function buildSummaryWorkbook(rows: SummaryRow[]) {
     { header: "Teams External ID", key: "teamsExternalId", width: 22 },
     { header: "Expense Owner ID", key: "expenseOwnerId", width: 20 },
     { header: "Expense Owner", key: "expenseOwner", width: 26 },
-    { header: "Total Agrupado (EUR)", key: "totalAgrupadoEur", width: 22 },
+    { header: "Total Agrupado", key: "totalAgrupadoEur", width: 18 },
   ];
 
   worksheet.getRow(1).font = { bold: true };
@@ -205,7 +205,7 @@ export async function buildSummaryWorkbook(rows: SummaryRow[]) {
     worksheet.addRow(row);
   }
 
-  worksheet.getColumn("totalAgrupadoEur").numFmt = '#,##0.00 "EUR"';
+  worksheet.getColumn("totalAgrupadoEur").numFmt = "#,##0.00";
 
   const buffer = await workbook.xlsx.writeBuffer();
   return Buffer.from(buffer);
