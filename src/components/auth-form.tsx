@@ -8,7 +8,11 @@ import { authClient } from "@/lib/auth-client";
 
 type Mode = "sign-in" | "sign-up";
 
-export function AuthForm() {
+type AuthFormProps = {
+  allowSignUp: boolean;
+};
+
+export function AuthForm({ allowSignUp }: AuthFormProps) {
   const router = useRouter();
   const [mode, setMode] = useState<Mode>("sign-in");
   const [name, setName] = useState("");
@@ -23,7 +27,7 @@ export function AuthForm() {
     setError("");
     setIsPending(true);
 
-    if (mode === "sign-in") {
+    if (mode === "sign-in" || !allowSignUp) {
       const result = await authClient.signIn.email({ email, password });
 
       setIsPending(false);
@@ -69,17 +73,19 @@ export function AuthForm() {
           <LogIn size={16} />
           Entrar
         </button>
-        <button
-          className={`button ${mode === "sign-up" ? "" : "secondary"}`}
-          type="button"
-          onClick={() => setMode("sign-up")}
-        >
-          <UserPlus size={16} />
-          Crear cuenta
-        </button>
+        {allowSignUp ? (
+          <button
+            className={`button ${mode === "sign-up" ? "" : "secondary"}`}
+            type="button"
+            onClick={() => setMode("sign-up")}
+          >
+            <UserPlus size={16} />
+            Crear cuenta
+          </button>
+        ) : null}
       </div>
 
-      {mode === "sign-up" ? (
+      {mode === "sign-up" && allowSignUp ? (
         <>
           <div className="field">
             <label htmlFor="name">Nombre</label>
@@ -137,7 +143,7 @@ export function AuthForm() {
 
       <button className="button" disabled={isPending} type="submit">
         {mode === "sign-in" ? <LogIn size={16} /> : <UserPlus size={16} />}
-        {isPending ? "Procesando..." : mode === "sign-in" ? "Entrar" : "Crear cuenta"}
+        {isPending ? "Procesando..." : mode === "sign-in" || !allowSignUp ? "Entrar" : "Crear cuenta"}
       </button>
     </form>
   );

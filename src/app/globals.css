@@ -71,6 +71,7 @@ a {
   align-items: center;
   gap: 10px;
   font-weight: 700;
+  text-decoration: none;
 }
 
 .brand-mark {
@@ -81,6 +82,28 @@ a {
   place-items: center;
   color: white;
   background: var(--primary);
+}
+
+.topnav {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-right: auto;
+}
+
+.topnav-link {
+  min-height: 36px;
+  border-radius: 6px;
+  padding: 0 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.topnav-link:hover {
+  background: var(--surface-soft);
 }
 
 .main {
@@ -120,6 +143,50 @@ a {
 .grid {
   display: grid;
   gap: 20px;
+}
+
+.mini-app-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 14px;
+}
+
+.mini-app {
+  min-height: 116px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 18px;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface);
+  color: var(--foreground);
+  text-decoration: none;
+}
+
+.mini-app:hover {
+  border-color: var(--primary);
+}
+
+.mini-app-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: var(--primary);
+}
+
+.mini-app-content {
+  display: grid;
+  gap: 5px;
+}
+
+.mini-app-content span {
+  color: var(--muted);
+  line-height: 1.4;
 }
 
 .panel {
@@ -284,6 +351,16 @@ h2 {
   .panel-header {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .topbar-inner {
+    align-items: stretch;
+    padding: 10px 0;
+    flex-direction: column;
+  }
+
+  .topnav {
+    margin-right: 0;
   }
 
   .metrics {

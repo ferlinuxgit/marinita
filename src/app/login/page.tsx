@@ -18,7 +18,7 @@ export default async function LoginPage() {
             <h1>Marinita</h1>
             <p className="muted">Accede para analizar y exportar resumenes de gastos.</p>
           </div>
-          <AuthForm />
+          <AuthForm allowSignUp={process.env.AUTH_ALLOW_SIGNUPS === "true"} />
         </div>
       </section>
     </main>

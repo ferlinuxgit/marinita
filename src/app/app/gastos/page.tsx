@@ -1,10 +1,10 @@
 import { redirect } from "next/navigation";
 
 import { AppShell } from "@/components/app-shell";
-import { MiniApps } from "@/components/mini-apps";
+import { ExpenseAnalyzer } from "@/components/expense-analyzer";
 import { getCurrentSession } from "@/lib/session";
 
-export default async function AppPage() {
+export default async function ExpensesMiniAppPage() {
   const session = await getCurrentSession();
 
   if (!session?.user) {
@@ -13,7 +13,7 @@ export default async function AppPage() {
 
   return (
     <AppShell userEmail={session.user.email}>
-      <MiniApps />
+      <ExpenseAnalyzer />
     </AppShell>
   );
 }

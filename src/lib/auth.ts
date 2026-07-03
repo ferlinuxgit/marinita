@@ -24,6 +24,12 @@ export const auth = betterAuth({
         return;
       }
 
+      if (process.env.AUTH_ALLOW_SIGNUPS !== "true") {
+        throw new APIError("FORBIDDEN", {
+          message: "El registro esta deshabilitado.",
+        });
+      }
+
       const expectedInviteCode = process.env.SIGNUP_INVITE_CODE;
 
       if (!expectedInviteCode) {
