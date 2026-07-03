@@ -57,9 +57,12 @@ BETTER_AUTH_SECRET=change-me
 BETTER_AUTH_URL=https://marinita.comodore.es
 NEXT_PUBLIC_APP_URL=https://marinita.comodore.es
 RUN_MIGRATIONS=true
+SIGNUP_INVITE_CODE=change-me
 ```
 
 `RUN_MIGRATIONS=true` hace que el contenedor aplique las migraciones Drizzle al arrancar. En despliegues con una sola replica es lo mas simple. Si en el futuro hay varias replicas, conviene mover las migraciones a un job separado y poner `RUN_MIGRATIONS=false` en la app web.
+
+`SIGNUP_INVITE_CODE` bloquea el registro publico. Solo podran crear cuenta las personas que conozcan ese codigo. El login sigue funcionando normalmente para usuarios ya creados.
 
 ### Base de datos persistente
 

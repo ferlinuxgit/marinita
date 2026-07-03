@@ -14,6 +14,7 @@ export function AuthForm() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [inviteCode, setInviteCode] = useState("");
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
 
@@ -22,15 +23,34 @@ export function AuthForm() {
     setError("");
     setIsPending(true);
 
-    const result =
-      mode === "sign-in"
-        ? await authClient.signIn.email({ email, password })
-        : await authClient.signUp.email({ name, email, password });
+    if (mode === "sign-in") {
+      const result = await authClient.signIn.email({ email, password });
+
+      setIsPending(false);
+
+      if (result.error) {
+        setError(result.error.message ?? "No se pudo completar la autenticacion.");
+        return;
+      }
+
+      router.replace("/app");
+      router.refresh();
+      return;
+    }
+
+    const response = await fetch("/api/auth/sign-up/email", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ name, email, password, inviteCode }),
+    });
+    const payload = (await response.json()) as { error?: { message?: string }; message?: string };
 
     setIsPending(false);
 
-    if (result.error) {
-      setError(result.error.message ?? "No se pudo completar la autenticacion.");
+    if (!response.ok) {
+      setError(payload.error?.message ?? payload.message ?? "No se pudo crear la cuenta.");
       return;
     }
 
@@ -60,17 +80,30 @@ export function AuthForm() {
       </div>
 
       {mode === "sign-up" ? (
-        <div className="field">
-          <label htmlFor="name">Nombre</label>
-          <input
-            className="input"
-            id="name"
-            minLength={2}
-            onChange={(event) => setName(event.target.value)}
-            required
-            value={name}
-          />
-        </div>
+        <>
+          <div className="field">
+            <label htmlFor="name">Nombre</label>
+            <input
+              className="input"
+              id="name"
+              minLength={2}
+              onChange={(event) => setName(event.target.value)}
+              required
+              value={name}
+            />
+          </div>
+          <div className="field">
+            <label htmlFor="inviteCode">Codigo de invitacion</label>
+            <input
+              autoComplete="off"
+              className="input"
+              id="inviteCode"
+              onChange={(event) => setInviteCode(event.target.value)}
+              required
+              value={inviteCode}
+            />
+          </div>
+        </>
       ) : null}
 
       <div className="field">
