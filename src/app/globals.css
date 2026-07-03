@@ -332,6 +332,42 @@ a {
   overflow-x: auto;
 }
 
+.history-list {
+  display: grid;
+  gap: 10px;
+}
+
+.history-item {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 14px;
+  background: var(--surface-soft);
+}
+
+.history-main {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.history-main strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -398,5 +434,17 @@ h2 {
 
   .metrics {
     grid-template-columns: 1fr;
+  }
+
+  .history-item {
+    grid-template-columns: 1fr;
+  }
+
+  .history-actions {
+    justify-content: stretch;
+  }
+
+  .history-actions .button {
+    flex: 1;
   }
 }

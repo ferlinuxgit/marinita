@@ -1,7 +1,15 @@
 "use client";
 
-import { Download, FileUp, Loader2 } from "lucide-react";
-import { DragEvent, FormEvent, useMemo, useRef, useState } from "react";
+import { Download, Eye, FileUp, Loader2, Trash2 } from "lucide-react";
+import {
+  DragEvent,
+  FormEvent,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 
 type SummaryRow = {
   accountCode: string;
@@ -18,9 +26,16 @@ type ReportResponse = {
     sourceRowCount: number;
     filteredRowCount: number;
     groupCount: number;
+    createdAt?: string;
   };
   rows: SummaryRow[];
 };
+
+type ReportSummary = ReportResponse["report"] & {
+  createdAt: string;
+};
+
+const PREVIEW_LIMIT = 200;
 
 function formatMoney(value: number) {
   return new Intl.NumberFormat("es-ES", {
@@ -35,13 +50,39 @@ export function ExpenseAnalyzer() {
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const [reports, setReports] = useState<ReportSummary[]>([]);
+  const [isLoadingReports, setIsLoadingReports] = useState(true);
+  const [activeReportId, setActiveReportId] = useState<string | null>(null);
+  const [deletingReportId, setDeletingReportId] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const previewRows = useMemo(() => result?.rows.slice(0, 50) ?? [], [result]);
+  const previewRows = useMemo(() => result?.rows.slice(0, PREVIEW_LIMIT) ?? [], [result]);
   const groupedTotal = useMemo(
     () => result?.rows.reduce((total, row) => total + row.totalAgrupadoEur, 0) ?? 0,
     [result],
   );
+
+  const loadReports = useCallback(async () => {
+    const response = await fetch("/api/reports", {
+      cache: "no-store",
+    });
+    setIsLoadingReports(false);
+
+    if (!response.ok) {
+      return;
+    }
+
+    const payload = (await response.json()) as { reports: ReportSummary[] };
+    setReports(payload.reports);
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      void loadReports();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+  }, [loadReports]);
 
   async function analyze(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -70,7 +111,57 @@ export function ExpenseAnalyzer() {
       return;
     }
 
+    const nextResult = payload as ReportResponse;
+    setResult(nextResult);
+    setActiveReportId(nextResult.report.id);
+    setReports((currentReports) => [
+      { ...nextResult.report, createdAt: new Date().toISOString() },
+      ...currentReports.filter((report) => report.id !== nextResult.report.id),
+    ]);
+  }
+
+  async function viewReport(reportId: string) {
+    setError("");
+    setIsPending(true);
+
+    const response = await fetch(`/api/reports/${reportId}`, {
+      cache: "no-store",
+    });
+    const payload = (await response.json()) as ReportResponse | { error?: string };
+
+    setIsPending(false);
+
+    if (!response.ok) {
+      setError("error" in payload && payload.error ? payload.error : "No se pudo cargar el informe.");
+      return;
+    }
+
     setResult(payload as ReportResponse);
+    setActiveReportId(reportId);
+  }
+
+  async function deleteReport(reportId: string) {
+    setError("");
+    setDeletingReportId(reportId);
+
+    const response = await fetch(`/api/reports/${reportId}`, {
+      method: "DELETE",
+    });
+
+    setDeletingReportId(null);
+
+    if (!response.ok) {
+      const payload = (await response.json()) as { error?: string };
+      setError(payload.error ?? "No se pudo eliminar el informe.");
+      return;
+    }
+
+    setReports((currentReports) => currentReports.filter((report) => report.id !== reportId));
+
+    if (activeReportId === reportId) {
+      setResult(null);
+      setActiveReportId(null);
+    }
   }
 
   function selectFile(selectedFile: File | null) {
@@ -115,6 +206,62 @@ export function ExpenseAnalyzer() {
           Sube el export de Payhawk en formato .xlsx. Se analizara la hoja Payments, se excluiran
           facturas y se agruparan los importes por cuenta, equipo y empleado.
         </p>
+      </section>
+
+      <section className="panel">
+        <div className="panel-header">
+          <h2>Historial</h2>
+        </div>
+        <div className="panel-body">
+          {isLoadingReports ? (
+            <div className="message">Cargando informes...</div>
+          ) : reports.length > 0 ? (
+            <div className="history-list">
+              {reports.map((report) => (
+                <div className="history-item" key={report.id}>
+                  <div className="history-main">
+                    <strong>{report.fileName}</strong>
+                    <span className="muted">
+                      {new Intl.DateTimeFormat("es-ES", {
+                        dateStyle: "short",
+                        timeStyle: "short",
+                      }).format(new Date(report.createdAt))}
+                    </span>
+                    <span className="muted">
+                      {report.groupCount} grupos · {report.filteredRowCount} filas procesadas
+                    </span>
+                  </div>
+                  <div className="history-actions">
+                    <button
+                      className="button secondary"
+                      disabled={isPending}
+                      onClick={() => void viewReport(report.id)}
+                      type="button"
+                    >
+                      <Eye size={16} />
+                      Ver
+                    </button>
+                    <a className="button secondary" href={`/api/reports/${report.id}/export`}>
+                      <Download size={16} />
+                      Exportar
+                    </a>
+                    <button
+                      className="button danger"
+                      disabled={deletingReportId === report.id}
+                      onClick={() => void deleteReport(report.id)}
+                      type="button"
+                    >
+                      {deletingReportId === report.id ? <Loader2 size={16} /> : <Trash2 size={16} />}
+                      Eliminar
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="message">Todavia no hay informes guardados.</div>
+          )}
+        </div>
       </section>
 
       <section className="panel">

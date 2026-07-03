@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 
+import { desc, eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
 import { db } from "@/db";
@@ -8,6 +9,30 @@ import { analyzePaymentsWorkbook } from "@/lib/excel";
 import { requireUser } from "@/lib/session";
 
 const MAX_FILE_SIZE = 8 * 1024 * 1024;
+
+export async function GET() {
+  const user = await requireUser();
+
+  if (!user) {
+    return NextResponse.json({ error: "No autorizado." }, { status: 401 });
+  }
+
+  const userReports = await db
+    .select({
+      id: reports.id,
+      fileName: reports.fileName,
+      sourceRowCount: reports.sourceRowCount,
+      filteredRowCount: reports.filteredRowCount,
+      groupCount: reports.groupCount,
+      createdAt: reports.createdAt,
+    })
+    .from(reports)
+    .where(eq(reports.userId, user.id))
+    .orderBy(desc(reports.createdAt))
+    .limit(50);
+
+  return NextResponse.json({ reports: userReports });
+}
 
 export async function POST(request: Request) {
   const user = await requireUser();
