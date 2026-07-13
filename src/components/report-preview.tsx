@@ -46,10 +46,16 @@ export function ReportPreview({ result }: ReportPreviewProps) {
           <h2>Vista previa</h2>
           <span className="muted">{result.report.fileName}</span>
         </div>
-        <a className="button" href={`/api/reports/${result.report.id}/export`}>
-          <Download size={16} />
-          Exportar XLSX
-        </a>
+        <div className="row start">
+          <a className="button secondary" href={`/api/reports/${result.report.id}/accounting-export`}>
+            <Download size={16} />
+            Exportar contabilidad
+          </a>
+          <a className="button" href={`/api/reports/${result.report.id}/export`}>
+            <Download size={16} />
+            Exportar XLSX
+          </a>
+        </div>
       </div>
       <div className="panel-body stack">
         <div className="metrics">

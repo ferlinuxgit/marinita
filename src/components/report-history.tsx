@@ -101,6 +101,13 @@ export function ReportHistory() {
                       <Download size={16} />
                       Exportar
                     </a>
+                    <a
+                      className="button secondary"
+                      href={`/api/reports/${report.id}/accounting-export`}
+                    >
+                      <Download size={16} />
+                      Contabilidad
+                    </a>
                     <button
                       className="button danger"
                       disabled={deletingReportId === report.id}
