@@ -1,4 +1,22 @@
-import { getDocument } from "pdfjs-dist/legacy/build/pdf.mjs";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+import { pathToFileURL } from "node:url";
+
+import { getDocument, GlobalWorkerOptions } from "pdfjs-dist/legacy/build/pdf.mjs";
+
+const packagedWorkerPath = join(process.cwd(), "pdf.worker.mjs");
+const installedWorkerPath = join(
+  process.cwd(),
+  "node_modules",
+  "pdfjs-dist",
+  "legacy",
+  "build",
+  "pdf.worker.mjs",
+);
+
+GlobalWorkerOptions.workerSrc = pathToFileURL(
+  existsSync(packagedWorkerPath) ? packagedWorkerPath : installedWorkerPath,
+).href;
 
 export const INVOICE_LINE_HEADERS = [
   "Tipo",
