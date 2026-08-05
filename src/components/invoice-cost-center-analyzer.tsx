@@ -4,7 +4,7 @@ import {
   Check,
   CheckCircle2,
   Clipboard,
-  FileDown,
+  FileSpreadsheet,
   FileText,
   FileUp,
   Loader2,
@@ -44,23 +44,12 @@ function makeTsv(result: InvoicePdfAnalysis, includeHeaders: boolean) {
   return rows.join("\n");
 }
 
-function downloadTsv(result: InvoicePdfAnalysis) {
-  const blob = new Blob(["\ufeff", makeTsv(result, true)], {
-    type: "text/tab-separated-values;charset=utf-8",
-  });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = `Lineas_${result.invoiceNumber || "factura"}.tsv`;
-  link.click();
-  URL.revokeObjectURL(url);
-}
-
 export function InvoiceCostCenterAnalyzer() {
   const [file, setFile] = useState<File | null>(null);
   const [result, setResult] = useState<InvoicePdfAnalysis | null>(null);
   const [error, setError] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [copied, setCopied] = useState<"lines" | "headers" | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -130,6 +119,42 @@ export function InvoiceCostCenterAnalyzer() {
       window.setTimeout(() => setCopied(null), 2200);
     } catch {
       setError("El navegador no ha permitido copiar. Descarga el TSV como alternativa.");
+    }
+  }
+
+  async function exportXlsx() {
+    if (!file || !result) {
+      return;
+    }
+
+    setError("");
+    setIsExporting(true);
+    const body = new FormData();
+    body.append("file", file);
+
+    try {
+      const response = await fetch("/api/invoice-cost-centers/export", {
+        method: "POST",
+        body,
+      });
+
+      if (!response.ok) {
+        const payload = (await response.json()) as ErrorResponse;
+        setError(payload.error ?? "No se pudo generar el Excel.");
+        return;
+      }
+
+      const blob = await response.blob();
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Líneas_${result.invoiceNumber || "factura"}.xlsx`;
+      link.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setError("No se pudo descargar el Excel. Inténtalo de nuevo.");
+    } finally {
+      setIsExporting(false);
     }
   }
 
@@ -279,9 +304,18 @@ export function InvoiceCostCenterAnalyzer() {
                   {copied === "headers" ? <Check size={17} /> : <Clipboard size={17} />}
                   Con cabeceras
                 </button>
-                <button className="button secondary" onClick={() => downloadTsv(result)} type="button">
-                  <FileDown size={17} />
-                  Descargar TSV
+                <button
+                  className="button secondary"
+                  disabled={isExporting}
+                  onClick={exportXlsx}
+                  type="button"
+                >
+                  {isExporting ? (
+                    <Loader2 className="spin" size={17} />
+                  ) : (
+                    <FileSpreadsheet size={17} />
+                  )}
+                  {isExporting ? "Generando..." : "Descargar XLSX"}
                 </button>
               </div>
             </div>
