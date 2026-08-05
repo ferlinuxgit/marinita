@@ -1,4 +1,4 @@
-import { FileSpreadsheet, LayoutGrid } from "lucide-react";
+import { FileSpreadsheet, LayoutGrid, ReceiptText } from "lucide-react";
 import Link from "next/link";
 
 import { SignOutButton } from "@/components/sign-out-button";
@@ -23,6 +23,10 @@ export function AppShell({ children, userEmail }: AppShellProps) {
             <Link className="topnav-link" href="/app/gastos">
               <FileSpreadsheet size={16} />
               Gastos
+            </Link>
+            <Link className="topnav-link" href="/app/facturas">
+              <ReceiptText size={16} />
+              Facturas
             </Link>
           </nav>
           <div className="row">

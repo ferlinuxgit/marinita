@@ -1,4 +1,4 @@
-import { ArrowRight, FileSpreadsheet } from "lucide-react";
+import { ArrowRight, FileSpreadsheet, ReceiptText } from "lucide-react";
 import Link from "next/link";
 
 const miniApps = [
@@ -7,6 +7,12 @@ const miniApps = [
     name: "Gastos",
     description: "Analiza exports de Payhawk, revisa una vista previa y exporta el resumen.",
     icon: FileSpreadsheet,
+  },
+  {
+    href: "/app/facturas",
+    name: "Facturas por centro de coste",
+    description: "Lee facturas BP en PDF y prepara las líneas para pegarlas en la factura.",
+    icon: ReceiptText,
   },
 ];
 

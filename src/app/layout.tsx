@@ -4,7 +4,7 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   title: "Marinita",
-  description: "Analisis y exportacion de gastos desde Excel.",
+  description: "Herramientas internas para gastos y facturas.",
 };
 
 export default function RootLayout({
