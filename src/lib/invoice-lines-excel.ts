@@ -4,26 +4,24 @@ import JSZip from "jszip";
 import { INVOICE_LINE_HEADERS, type InvoicePdfAnalysis } from "./invoice-pdf";
 
 const COLUMN_WIDTHS = [
-  6.57, 5.05, 27.3, 25.2, 10.59, 26.87, 25.09, 22.51, 20.88, 14.43, 14.34, 15.58,
-  16.52, 25.82, 14.38, 28.73, 15.65, 21.42, 23.48, 26.01, 23.38, 20.55, 15.77,
-  20.17,
+  6.57, 5.05, 27.3, 25.2, 10.59, 26.87, 25.09, 22.51, 14.43, 14.34, 15.58, 16.52,
+  25.82, 14.38, 28.73, 15.65, 21.42, 23.48, 26.01, 23.38, 20.55, 15.77, 20.17,
 ] as const;
 
 const NUMBER_FORMATS: Record<number, string> = {
   5: "#,##0.#####",
   6: "#,##0.00######",
   8: "#,##0.00",
-  9: "#,##0.00###",
+  13: "#,##0.00",
   14: "#,##0.00",
   15: "#,##0.00",
-  16: "#,##0.00",
-  17: "#,##0.#####",
+  16: "#,##0.#####",
+  18: "#,##0.00",
   19: "#,##0.00",
   20: "#,##0.00",
   21: "#,##0.00",
   22: "#,##0.00",
   23: "#,##0.00",
-  24: "#,##0.00",
 };
 
 export async function buildInvoiceLinesWorkbook(analysis: InvoicePdfAnalysis) {
@@ -65,7 +63,7 @@ export async function buildInvoiceLinesWorkbook(analysis: InvoicePdfAnalysis) {
       worksheet.getCell(rowNumber, Number(columnNumberText)).numFmt = numberFormat;
     }
 
-    for (const columnNumber of [1, 2, 3, 4, 7, 10, 11, 12, 13, 18]) {
+    for (const columnNumber of [1, 2, 3, 4, 7, 9, 10, 11, 12, 17]) {
       worksheet.getCell(rowNumber, columnNumber).numFmt = "@";
     }
   }
