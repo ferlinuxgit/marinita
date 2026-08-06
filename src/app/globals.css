@@ -512,8 +512,7 @@ a {
   color: var(--foreground);
 }
 
-.code-cell,
-.line-number {
+.code-cell {
   font-family: "Courier New", monospace;
   font-variant-numeric: tabular-nums;
   font-weight: 700;
@@ -550,7 +549,7 @@ a {
 }
 
 .full-lines-table {
-  min-width: 5200px;
+  min-width: 3400px;
   font-size: 12px;
 }
 

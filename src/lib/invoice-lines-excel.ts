@@ -4,32 +4,26 @@ import JSZip from "jszip";
 import { INVOICE_LINE_HEADERS, type InvoicePdfAnalysis } from "./invoice-pdf";
 
 const COLUMN_WIDTHS = [
-  6.57, 5.05, 18.59, 12.97, 10.59, 20.35, 26.87, 17.7, 18.86, 22.51, 20.88,
-  25.47, 13.93, 26.36, 11.35, 25.82, 28.73, 14.38, 19.18, 29.01, 26.63, 17.33,
-  20.96, 17.36, 14.43, 14.34, 15.58, 21.42, 16.52, 19.1, 9.77, 34.18, 20.55,
-  15.77, 20.17,
+  6.57, 5.05, 27.3, 25.2, 10.59, 26.87, 25.09, 22.51, 20.88, 14.43, 14.34, 15.58,
+  16.52, 25.82, 14.38, 28.73, 15.65, 21.42, 23.48, 26.01, 23.38, 20.55, 15.77,
+  20.17,
 ] as const;
 
 const NUMBER_FORMATS: Record<number, string> = {
   5: "#,##0.#####",
-  7: "#,##0.00######",
-  8: "#,##0.00######",
-  9: "#,##0.#####",
-  10: "#,##0.00",
-  11: "#,##0.00###",
-  15: "0",
+  6: "#,##0.00######",
+  8: "#,##0.00",
+  9: "#,##0.00###",
+  14: "#,##0.00",
+  15: "#,##0.00",
   16: "#,##0.00",
-  17: "#,##0.00",
-  18: "#,##0.00",
-  20: "dd/mm/yyyy",
-  21: "dd/mm/yyyy",
+  17: "#,##0.#####",
+  19: "#,##0.00",
+  20: "#,##0.00",
+  21: "#,##0.00",
+  22: "#,##0.00",
   23: "#,##0.00",
   24: "#,##0.00",
-  31: "0",
-  32: "#,##0.00",
-  33: "#,##0.00",
-  34: "#,##0.00",
-  35: "#,##0.00",
 };
 
 export async function buildInvoiceLinesWorkbook(analysis: InvoicePdfAnalysis) {
@@ -60,11 +54,7 @@ export async function buildInvoiceLinesWorkbook(analysis: InvoicePdfAnalysis) {
       showColumnStripes: false,
     },
     columns: INVOICE_LINE_HEADERS.map((header) => ({ name: header, filterButton: true })),
-    rows: analysis.lines.map((line) =>
-      line.values.map((value, index) =>
-        index === 14 ? { formula: "FALSE()", result: false } : value,
-      ),
-    ),
+    rows: analysis.lines.map((line) => line.values),
   });
 
   worksheet.getRow(1).font = { bold: true, name: "Calibri", size: 11 };
@@ -75,7 +65,7 @@ export async function buildInvoiceLinesWorkbook(analysis: InvoicePdfAnalysis) {
       worksheet.getCell(rowNumber, Number(columnNumberText)).numFmt = numberFormat;
     }
 
-    for (const columnNumber of [1, 2, 3, 4, 6, 12, 13, 14, 19, 22, 25, 26, 27, 28, 29, 30]) {
+    for (const columnNumber of [1, 2, 3, 4, 7, 10, 11, 12, 13, 18]) {
       worksheet.getCell(rowNumber, columnNumber).numFmt = "@";
     }
   }

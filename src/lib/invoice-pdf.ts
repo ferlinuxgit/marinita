@@ -21,36 +21,25 @@ GlobalWorkerOptions.workerSrc = pathToFileURL(
 export const INVOICE_LINE_HEADERS = [
   "Tipo",
   "Nº",
-  "N.º referencia art.",
-  "Descripción",
+  "Grupo contable IVA negocio",
+  "Descripción o comentario",
   "Cantidad",
-  "Cód. unidad medida",
   "Coste unit. directo excl. IVA",
-  "Precio venta (DL)",
-  "% Descuento línea",
+  "Grupo contable IVA prod.",
   "Importe línea excl. IVA",
   "Coste total de CBAM",
-  "Cód. de esquema especial",
-  "N.º proyecto",
-  "Código de fraccionamiento",
-  "Aprobada",
-  "Kgs. Plástico No Reciclable",
-  "Importe Imp. Plástico No Rec.",
-  "KgsPlastTotal",
-  "Tipo descuento FF ",
-  "Fecha aplicación inicio Dto. FF",
-  "Fecha aplicación fin Dto. FF",
-  "Cliente Asociado",
-  "Provisión Transporte",
-  "Provisión Rappel",
   "Cecos Código",
   "Natur Código",
   "Interco Código",
-  "Año provision Código",
   "Epigrafe Código",
-  "Tramo sind Código",
-  "Nº línea",
-  "Importe descuento factura excl. IVA",
+  "Kgs. Plástico No Reciclable",
+  "KgsPlastTotal",
+  "Importe Imp. Plástico No Rec.",
+  "Cant. a asignar",
+  "Año provision Código",
+  "Subtotal excl. IVA (EUR)",
+  "Importe dto. factura (EUR)",
+  "% descuento en factura",
   "Total IVA excl. (EUR)",
   "IVA total (EUR)",
   "Total IVA incl. (EUR)",
@@ -73,8 +62,9 @@ export type InvoiceLineValue = string | number;
 
 export type InvoiceLine = {
   costCenterCode: string;
-  lineNumber: number;
   amount: number;
+  vatAmount: number;
+  totalAmount: number;
   values: InvoiceLineValue[];
 };
 
@@ -159,52 +149,41 @@ function sameTotals(left: MoneyTotals, right: MoneyTotals) {
 
 function makeInvoiceLine(
   center: CostCenterSummary,
-  index: number,
-  invoiceTotals: MoneyTotals,
 ): InvoiceLine {
-  const lineNumber = (index + 1) * 10000;
+  const vatAmount = roundMoney(center.net.base * 0.21);
+  const totalAmount = roundMoney(center.net.base + vatAmount);
   const values: InvoiceLineValue[] = [
     "Artículo",
     "SC00013",
-    "",
+    "NACIONAL",
     "Combustible",
     1,
-    "UND",
     center.net.base,
-    0,
-    0,
+    "IVA21SERV",
     center.net.base,
-    0,
-    "01 General",
-    "",
-    "",
-    "FALSE",
-    0,
-    0,
-    0,
-    "",
-    "",
-    "",
-    "",
-    0,
     0,
     center.code,
     "",
     "",
-    "",
     "SC00013",
-    "",
-    lineNumber,
     0,
-    invoiceTotals.base,
-    invoiceTotals.vat,
-    invoiceTotals.total,
+    0,
+    0,
+    0,
+    "",
+    center.net.base,
+    0,
+    0,
+    center.net.base,
+    vatAmount,
+    totalAmount,
   ];
 
   return {
     costCenterCode: center.code,
-    lineNumber,
     amount: center.net.base,
+    vatAmount,
+    totalAmount,
     values,
   };
 }
@@ -329,6 +308,6 @@ export async function analyzeInvoicePdf(
     reconciled,
     warnings,
     headers: INVOICE_LINE_HEADERS,
-    lines: centers.map((center, index) => makeInvoiceLine(center, index, totals)),
+    lines: centers.map((center) => makeInvoiceLine(center)),
   };
 }

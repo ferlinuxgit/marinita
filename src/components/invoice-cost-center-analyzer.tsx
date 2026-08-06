@@ -328,7 +328,8 @@ export function InvoiceCostCenterAnalyzer() {
                     <th>Total centro excl. IVA</th>
                     <th>Descuento excl. IVA</th>
                     <th>Base de la línea</th>
-                    <th>Nº línea</th>
+                    <th>IVA 21%</th>
+                    <th>Total línea</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -340,7 +341,8 @@ export function InvoiceCostCenterAnalyzer() {
                         -{moneyFormatter.format(center.discount.base)}
                       </td>
                       <td className="amount net-amount">{moneyFormatter.format(center.net.base)}</td>
-                      <td className="line-number">{result.lines[index].lineNumber}</td>
+                      <td className="amount">{moneyFormatter.format(result.lines[index].vatAmount)}</td>
+                      <td className="amount">{moneyFormatter.format(result.lines[index].totalAmount)}</td>
                     </tr>
                   ))}
                 </tbody>
@@ -351,13 +353,14 @@ export function InvoiceCostCenterAnalyzer() {
                     <td />
                     <th className="amount">{moneyFormatter.format(result.totals.base)}</th>
                     <td />
+                    <td />
                   </tr>
                 </tfoot>
               </table>
             </div>
 
             <details className="full-preview">
-              <summary>Ver las 35 columnas que se copiarán</summary>
+              <summary>Ver las {result.headers.length} columnas que se copiarán</summary>
               <div className="table-wrap full-table-wrap">
                 <table className="full-lines-table">
                   <thead>
