@@ -15,7 +15,7 @@ export default async function CalendarPage({ searchParams }: CalendarPageProps) 
     <Calendar
       initialAnchor={params.date && isIsoDate(params.date) ? params.date : today}
       initialShowDone={params.done !== "0"}
-      initialView={isCalendarView(params.view) ? params.view : "twoWeeks"}
+      initialView={isCalendarView(params.view) ? params.view : tareasConfig.defaultView}
       today={today}
     />
   );
