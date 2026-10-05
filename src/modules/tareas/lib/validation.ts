@@ -27,6 +27,12 @@ export const taskInputSchema = z
     title: z.string().trim().min(1, "El nombre es obligatorio.").max(limits.titleLength),
     notes: z.string().max(limits.notesLength).default(""),
     color: colorSchema.default(null),
+    kind: z.enum(["task", "meeting"]).default("task"),
+    time: z
+      .string()
+      .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora no válida.")
+      .nullable()
+      .default(null),
     date: isoDateSchema,
     recurrence: recurrenceSchema.nullable().default(null),
     until: isoDateSchema.nullable().default(null),

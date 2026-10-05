@@ -16,6 +16,7 @@ import {
 
 import { user } from "../../../core/db/auth-schema";
 import type { DataBlock } from "../lib/data-blocks";
+import type { TaskKind } from "../lib/occurrences";
 import type { Recurrence } from "../lib/recurrence";
 
 // Calendar dates use `date` columns in string mode ("YYYY-MM-DD"): no time zone conversions.
@@ -31,6 +32,10 @@ export const tareasTasks = pgTable(
     title: text("title").notNull(),
     notes: text("notes").notNull().default(""),
     color: text("color"),
+    /** "task" or "meeting"; meetings are listed first in each day and drawn taller. */
+    kind: text("kind").$type<TaskKind>().notNull().default("task"),
+    /** Optional start time ("HH:MM"), used by meetings. */
+    time: text("time"),
     date: date("date", { mode: "string" }).notNull(),
     recurrence: jsonb("recurrence").$type<Recurrence>(),
     untilDate: date("untilDate", { mode: "string" }),
@@ -56,6 +61,7 @@ export const tareasTaskExceptions = pgTable(
     title: text("title"),
     notes: text("notes"),
     color: text("color"),
+    time: text("time"),
     date: date("date", { mode: "string" }),
   },
   (table) => [uniqueIndex("tareas_task_exceptions_occurrence_idx").on(table.taskId, table.occurrenceDate)],

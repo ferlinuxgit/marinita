@@ -1399,3 +1399,66 @@ table.tk-data-table {
   color: white;
   background: var(--primary);
 }
+
+/* --- Meetings: on top of each day, twice as tall as a task ---------------------------------- */
+
+.tk-task.meeting {
+  min-height: 50px;
+  border-width: 1px 1px 1px 4px;
+  background: color-mix(in srgb, var(--tk-color) 20%, white);
+  box-shadow: 0 1px 2px rgba(24, 35, 31, 0.08);
+}
+
+.tk-task.meeting .tk-task-title {
+  padding: 3px 0;
+  display: grid;
+  gap: 1px;
+  white-space: normal;
+}
+
+.tk-meeting-meta {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: color-mix(in srgb, var(--tk-color) 75%, black);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.tk-meeting-title {
+  display: -webkit-box;
+  overflow: hidden;
+  font-weight: 700;
+  line-height: 1.2;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+.tk-task.meeting.done .tk-meeting-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+.tk-kind {
+  display: flex;
+}
+
+.tk-kind button {
+  flex: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+}
+
+.tk-time-field {
+  flex: 0 1 150px;
+}
+
+@media (max-width: 720px) {
+  .tk-task.meeting {
+    min-height: 64px;
+  }
+}

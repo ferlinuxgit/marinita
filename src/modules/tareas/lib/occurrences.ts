@@ -1,12 +1,17 @@
 import { addDays, type IsoDate } from "@/modules/tareas/lib/dates";
 import { displayDate, occurrencesBetween, occursOn, type Recurrence } from "@/modules/tareas/lib/recurrence";
 
+export type TaskKind = "task" | "meeting";
+
 /** A stored task. With `recurrence` it is a series that starts on `date`. */
 export type TaskRecord = {
   id: string;
   title: string;
   notes: string;
   color: string | null;
+  kind: TaskKind;
+  /** "HH:MM" or null. */
+  time: string | null;
   date: IsoDate;
   until: IsoDate | null;
   recurrence: Recurrence | null;
@@ -21,11 +26,12 @@ export type ExceptionRecord = {
   occurrenceDate: IsoDate;
   done: boolean;
   deleted: boolean;
-  /** When true, title/notes/color/date replace the series values for this occurrence. */
+  /** When true, title/notes/color/time/date replace the series values for this occurrence. */
   edited: boolean;
   title: string | null;
   notes: string | null;
   color: string | null;
+  time: string | null;
   date: IsoDate | null;
 };
 
@@ -38,6 +44,8 @@ export type Occurrence = {
   title: string;
   notes: string;
   color: string | null;
+  kind: TaskKind;
+  time: string | null;
   done: boolean;
   recurrence: Recurrence | null;
   seriesStart: IsoDate;
@@ -58,6 +66,8 @@ function toOccurrence(task: TaskRecord, occurrenceDate: IsoDate, exception?: Exc
     title: edited && exception.title !== null ? exception.title : task.title,
     notes: edited && exception.notes !== null ? exception.notes : task.notes,
     color: edited ? exception.color : task.color,
+    kind: task.kind,
+    time: edited ? exception.time : task.time,
     done: task.recurrence ? (exception?.done ?? false) : task.done,
     recurrence: task.recurrence,
     seriesStart: task.date,
@@ -141,9 +151,30 @@ export function applyDayOrders(occurrences: Occurrence[], orders: Map<IsoDate, s
     return index === -1 ? Number.POSITIVE_INFINITY : index;
   };
 
+  return meetingsFirst(
+    occurrences
+      .map((occurrence, index) => ({ occurrence, index, position: position(occurrence) }))
+      .sort((a, b) => a.occurrence.date.localeCompare(b.occurrence.date) || a.position - b.position || a.index - b.index)
+      .map((item) => item.occurrence),
+  );
+}
+
+/**
+ * Within each day, meetings go first, sorted by time (meetings without time after the timed ones);
+ * otherwise the given order is kept.
+ */
+export function meetingsFirst<T extends Pick<Occurrence, "date" | "kind" | "time">>(occurrences: T[]): T[] {
+  const rank = (occurrence: T) => (occurrence.kind === "meeting" ? (occurrence.time ? 0 : 1) : 2);
+
   return occurrences
-    .map((occurrence, index) => ({ occurrence, index, position: position(occurrence) }))
-    .sort((a, b) => a.occurrence.date.localeCompare(b.occurrence.date) || a.position - b.position || a.index - b.index)
+    .map((occurrence, index) => ({ occurrence, index }))
+    .sort(
+      (a, b) =>
+        a.occurrence.date.localeCompare(b.occurrence.date) ||
+        rank(a.occurrence) - rank(b.occurrence) ||
+        (rank(a.occurrence) === 0 ? a.occurrence.time!.localeCompare(b.occurrence.time!) : 0) ||
+        a.index - b.index,
+    )
     .map((item) => item.occurrence);
 }
 

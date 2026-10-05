@@ -21,6 +21,8 @@ function toRecord(row: TaskRow): TaskRecord {
     title: row.title,
     notes: row.notes,
     color: row.color,
+    kind: row.kind,
+    time: row.time,
     date: row.date,
     until: row.untilDate,
     recurrence: row.recurrence,
@@ -41,6 +43,9 @@ function taskValues(input: TaskInput, start: IsoDate) {
     title: input.title,
     notes: input.notes,
     color: input.color,
+    kind: input.kind,
+    // Only meetings have a time.
+    time: input.kind === "meeting" ? input.time : null,
     date: start,
     recurrence,
     untilDate: recurrence ? input.until : null,
@@ -166,6 +171,7 @@ export async function updateTask(
         title: input.title,
         notes: input.notes,
         color: input.color,
+        time: input.kind === "meeting" ? input.time : null,
         date: input.date,
       });
       return;
@@ -189,7 +195,7 @@ export async function updateTask(
         // The new values apply to every occurrence; done/deleted states are kept.
         await tx
           .update(tareasTaskExceptions)
-          .set({ edited: false, title: null, notes: null, color: null, date: null })
+          .set({ edited: false, title: null, notes: null, color: null, time: null, date: null })
           .where(eq(tareasTaskExceptions.taskId, task.id));
       } else {
         await tx.delete(tareasTaskExceptions).where(eq(tareasTaskExceptions.taskId, task.id));
@@ -216,7 +222,7 @@ export async function updateTask(
       // Same start day: keep the done/deleted state of the following occurrences.
       await tx
         .update(tareasTaskExceptions)
-        .set({ taskId: newTaskId, edited: false, title: null, notes: null, color: null, date: null })
+        .set({ taskId: newTaskId, edited: false, title: null, notes: null, color: null, time: null, date: null })
         .where(futureExceptions);
     } else {
       await tx.delete(tareasTaskExceptions).where(futureExceptions);

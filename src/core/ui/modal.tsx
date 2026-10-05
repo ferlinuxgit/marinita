@@ -9,7 +9,10 @@ type ModalProps = {
   children: React.ReactNode;
 };
 
-/** Accessible dialog: closes with Escape or by clicking outside, and keeps focus inside. */
+/**
+ * Accessible dialog: closes with Escape or by clicking outside. Focuses the element marked with
+ * `data-autofocus`, or the first field.
+ */
 export function Modal({ title, onClose, children }: ModalProps) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -21,7 +24,9 @@ export function Modal({ title, onClose, children }: ModalProps) {
 
   useEffect(() => {
     const previousFocus = document.activeElement as HTMLElement | null;
-    const firstField = dialogRef.current?.querySelector<HTMLElement>("input, textarea, select, button:not(.modal-close)");
+    const firstField =
+      dialogRef.current?.querySelector<HTMLElement>("[data-autofocus]") ??
+      dialogRef.current?.querySelector<HTMLElement>("input, textarea, select, button:not(.modal-close)");
     firstField?.focus();
     document.body.style.overflow = "hidden";
 

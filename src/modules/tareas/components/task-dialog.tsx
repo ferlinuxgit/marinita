@@ -1,13 +1,13 @@
 "use client";
 
-import { Check, Loader2, Repeat, Trash2 } from "lucide-react";
+import { Check, ListChecks, Loader2, Repeat, Trash2, Users } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 import { errorMessage, fetchJson } from "@/core/ui/api-client";
 import { Modal } from "@/core/ui/modal";
 import { tareasConfig } from "@/modules/tareas/config";
 import { dateParts, formatDate, WEEKDAY_NAMES, WEEKDAY_SHORT, weekday, type IsoDate } from "@/modules/tareas/lib/dates";
-import type { Occurrence } from "@/modules/tareas/lib/occurrences";
+import type { Occurrence, TaskKind } from "@/modules/tareas/lib/occurrences";
 import {
   describeRecurrence,
   normalizeRecurrence,
@@ -23,6 +23,9 @@ export type TaskDialogTarget = { mode: "create"; date: IsoDate } | { mode: "edit
 type RepeatMode = "none" | "daily" | "weekly" | "monthly" | "custom";
 
 type FormState = {
+  kind: TaskKind;
+  /** "HH:MM" or "" (meetings only). */
+  time: string;
   title: string;
   date: IsoDate;
   notes: string;
@@ -47,6 +50,8 @@ const SCOPE_OPTIONS: { value: EditScope; label: string }[] = [
 function initialForm(target: TaskDialogTarget): FormState {
   if (target.mode === "create") {
     return {
+      kind: "task",
+      time: "",
       title: "",
       date: target.date,
       notes: "",
@@ -66,6 +71,8 @@ function initialForm(target: TaskDialogTarget): FormState {
   const repeat: RepeatMode = !recurrence ? "none" : recurrence.interval > 1 ? "custom" : recurrence.freq;
 
   return {
+    kind: occurrence.kind,
+    time: occurrence.time ?? "",
     title: occurrence.title,
     date: occurrence.date,
     notes: occurrence.notes,
@@ -94,7 +101,12 @@ function toRecurrence(form: FormState): Recurrence | null {
 }
 
 function repetitionKey(form: FormState) {
-  return JSON.stringify([form.repeat === "none" ? null : toRecurrence({ ...form, date: "2000-01-03" }), form.repeat === "none" ? "" : form.until]);
+  // The kind belongs to the whole series, like the repetition settings.
+  return JSON.stringify([
+    form.kind,
+    form.repeat === "none" ? null : toRecurrence({ ...form, date: "2000-01-03" }),
+    form.repeat === "none" ? "" : form.until,
+  ]);
 }
 
 type TaskDialogProps = {
@@ -133,6 +145,8 @@ export function TaskDialog({ target, onClose, onChanged }: TaskDialogProps) {
 
   function taskPayload() {
     return {
+      kind: form.kind,
+      time: form.kind === "meeting" && form.time ? form.time : null,
       title: form.title.trim(),
       date: form.date,
       notes: form.notes,
@@ -280,7 +294,7 @@ export function TaskDialog({ target, onClose, onChanged }: TaskDialogProps) {
                   />
                   <span>
                     {option.label}
-                    {disabled ? <small>La repetición solo se puede cambiar para varias apariciones.</small> : null}
+                    {disabled ? <small>El tipo y la repetición solo se pueden cambiar para varias apariciones.</small> : null}
                   </span>
                 </label>
               );
@@ -302,11 +316,38 @@ export function TaskDialog({ target, onClose, onChanged }: TaskDialogProps) {
   }
 
   return (
-    <Modal onClose={onClose} title={occurrence ? "Editar tarea" : "Nueva tarea"}>
+    <Modal
+      onClose={onClose}
+      title={`${occurrence ? "Editar" : "Nueva"} ${form.kind === "meeting" ? "reunión" : "tarea"}`}
+    >
       <form className="stack tk-task-form" onSubmit={onSubmit}>
+        <div className="tk-segmented tk-kind" role="radiogroup" aria-label="Tipo">
+          <button
+            aria-checked={form.kind === "task"}
+            className={form.kind === "task" ? "active" : ""}
+            onClick={() => update("kind", "task")}
+            role="radio"
+            type="button"
+          >
+            <ListChecks size={16} />
+            Tarea
+          </button>
+          <button
+            aria-checked={form.kind === "meeting"}
+            className={form.kind === "meeting" ? "active" : ""}
+            onClick={() => update("kind", "meeting")}
+            role="radio"
+            type="button"
+          >
+            <Users size={16} />
+            Reunión
+          </button>
+        </div>
+
         <div className="field">
           <label htmlFor="tk-title">Nombre</label>
           <textarea
+            data-autofocus
             className="input tk-title-input"
             id="tk-title"
             maxLength={tareasConfig.limits.titleLength}
@@ -335,6 +376,19 @@ export function TaskDialog({ target, onClose, onChanged }: TaskDialogProps) {
               value={form.date}
             />
           </div>
+          {form.kind === "meeting" ? (
+            <div className="field tk-time-field">
+              <label htmlFor="tk-time">Hora (opcional)</label>
+              <input
+                className="input"
+                id="tk-time"
+                onChange={(event) => update("time", event.target.value)}
+                step={300}
+                type="time"
+                value={form.time}
+              />
+            </div>
+          ) : null}
           {occurrence ? (
             <label className="tk-done-toggle">
               <input checked={done} onChange={(event) => void toggleDone(event.target.checked)} type="checkbox" />

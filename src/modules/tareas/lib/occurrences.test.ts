@@ -4,6 +4,7 @@ import { buildChecklist, cloneStructure, countProgress, type ChecklistItem } fro
 import {
   applyDayOrders,
   expandOccurrences,
+  meetingsFirst,
   mergeVisibleOrder,
   type ExceptionRecord,
   type TaskRecord,
@@ -15,6 +16,8 @@ const weeklyMonday: TaskRecord = {
   title: "Revisar bancos",
   notes: "",
   color: "#2563eb",
+  kind: "task",
+  time: null,
   date: "2026-10-05",
   until: null,
   recurrence: { freq: "weekly", interval: 1, weekdays: [0], monthDay: null },
@@ -23,7 +26,7 @@ const weeklyMonday: TaskRecord = {
 };
 
 function exception(partial: Partial<ExceptionRecord> & Pick<ExceptionRecord, "occurrenceDate">): ExceptionRecord {
-  return { taskId: "s1", done: false, deleted: false, edited: false, title: null, notes: null, color: null, date: null, ...partial };
+  return { taskId: "s1", done: false, deleted: false, edited: false, title: null, notes: null, color: null, time: null, date: null, ...partial };
 }
 
 describe("expandOccurrences", () => {
@@ -106,7 +109,7 @@ describe("weekend shift", () => {
   });
 
   it("keeps the state of a moved occurrence on its original date", () => {
-    const done = { taskId: "m", occurrenceDate: "2026-09-05", done: true, deleted: false, edited: false, title: null, notes: null, color: null, date: null };
+    const done = { taskId: "m", occurrenceDate: "2026-09-05", done: true, deleted: false, edited: false, title: null, notes: null, color: null, time: null, date: null };
     expect(expandOccurrences([monthly], [done], "2026-09-07", "2026-09-07")[0].done).toBe(true);
   });
 
@@ -155,6 +158,62 @@ describe("day order", () => {
   it("reorders visible tasks without moving hidden (done) ones", () => {
     expect(mergeVisibleOrder(["a", "x", "b", "c"], ["c", "a", "b"])).toEqual(["c", "x", "a", "b"]);
     expect(mergeVisibleOrder(["a", "b"], ["b", "a"])).toEqual(["b", "a"]);
+  });
+});
+
+describe("meetings", () => {
+  const item = (id: string, kind: "task" | "meeting", time: string | null, createdAt: string): TaskRecord => ({
+    ...weeklyMonday,
+    id,
+    title: id,
+    kind,
+    time,
+    recurrence: null,
+    date: "2026-10-06",
+    createdAt,
+  });
+  const tasks = [
+    item("tarea-a", "task", null, "2026-10-01T00:00:00Z"),
+    item("reunion-sin-hora", "meeting", null, "2026-10-02T00:00:00Z"),
+    item("reunion-12", "meeting", "12:00", "2026-10-03T00:00:00Z"),
+    item("tarea-b", "task", null, "2026-10-04T00:00:00Z"),
+    item("reunion-0930", "meeting", "09:30", "2026-10-05T00:00:00Z"),
+  ];
+
+  it("lists meetings first, by time, then the rest in their order", () => {
+    const occurrences = applyDayOrders(expandOccurrences(tasks, [], "2026-10-06", "2026-10-06"), new Map());
+    expect(occurrences.map((occurrence) => occurrence.taskId)).toEqual([
+      "reunion-0930",
+      "reunion-12",
+      "reunion-sin-hora",
+      "tarea-a",
+      "tarea-b",
+    ]);
+  });
+
+  it("keeps meetings first even if the saved order put a task above them", () => {
+    const orders = new Map([["2026-10-06", ["tarea-b:2026-10-06", "reunion-12:2026-10-06", "tarea-a:2026-10-06"]]]);
+    const occurrences = applyDayOrders(expandOccurrences(tasks, [], "2026-10-06", "2026-10-06"), orders);
+    expect(occurrences.map((occurrence) => occurrence.taskId)).toEqual([
+      "reunion-0930",
+      "reunion-12",
+      "reunion-sin-hora",
+      "tarea-b",
+      "tarea-a",
+    ]);
+  });
+
+  it("only reorders inside each day", () => {
+    const mixed = [
+      { date: "2026-10-06", kind: "task" as const, time: null },
+      { date: "2026-10-07", kind: "meeting" as const, time: "10:00" },
+      { date: "2026-10-06", kind: "meeting" as const, time: null },
+    ];
+    expect(meetingsFirst(mixed).map((occurrence) => `${occurrence.date}:${occurrence.kind}`)).toEqual([
+      "2026-10-06:meeting",
+      "2026-10-06:task",
+      "2026-10-07:meeting",
+    ]);
   });
 });
 

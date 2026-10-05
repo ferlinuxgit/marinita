@@ -1,13 +1,13 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight, GripVertical, Loader2, Plus, Repeat } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, GripVertical, Loader2, Plus, Repeat, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { errorMessage, fetchJson } from "@/core/ui/api-client";
 import { TaskDialog, type TaskDialogTarget } from "@/modules/tareas/components/task-dialog";
 import { tareasConfig } from "@/modules/tareas/config";
 import { dateParts, formatDate, WEEKDAY_NAMES, type IsoDate } from "@/modules/tareas/lib/dates";
-import { mergeVisibleOrder, type Occurrence } from "@/modules/tareas/lib/occurrences";
+import { meetingsFirst, mergeVisibleOrder, type Occurrence } from "@/modules/tareas/lib/occurrences";
 import { CALENDAR_VIEWS, getPeriod, periodLabel, shiftAnchor, type CalendarView } from "@/modules/tareas/lib/periods";
 import { tareasApi } from "@/modules/tareas/module";
 
@@ -17,6 +17,9 @@ type CalendarProps = {
   initialAnchor: IsoDate;
   initialShowDone: boolean;
 };
+
+/** Color of meetings that have no color of their own. */
+const MEETING_COLOR = "#4f46e5";
 
 const occurrenceKey = (occurrence: Occurrence) => `${occurrence.taskId}:${occurrence.occurrenceDate}`;
 
@@ -169,9 +172,19 @@ function DayCell({ day, label, tasks, isToday, outside, togglingKey, onCreate, o
           return (
             <li data-key={key} key={key} style={itemStyle(index)}>
               <div
-                className={`tk-task ${occurrence.done ? "done" : ""} ${occurrence.color ? "colored" : ""} ${drag?.from === index ? "is-dragged" : ""} ${canReorder ? "sortable" : ""}`}
-                style={occurrence.color ? ({ "--tk-color": occurrence.color } as React.CSSProperties) : undefined}
-                title={occurrence.notes ? `${occurrence.title}\n\n${occurrence.notes}` : occurrence.title}
+                className={`tk-task ${occurrence.kind === "meeting" ? "meeting" : ""} ${occurrence.done ? "done" : ""} ${occurrence.color || occurrence.kind === "meeting" ? "colored" : ""} ${drag?.from === index ? "is-dragged" : ""} ${canReorder ? "sortable" : ""}`}
+                style={
+                  occurrence.color || occurrence.kind === "meeting"
+                    ? ({ "--tk-color": occurrence.color ?? MEETING_COLOR } as React.CSSProperties)
+                    : undefined
+                }
+                title={[
+                  occurrence.kind === "meeting" ? `Reunión${occurrence.time ? ` · ${occurrence.time}` : ""}` : null,
+                  occurrence.title,
+                  occurrence.notes ? `\n${occurrence.notes}` : null,
+                ]
+                  .filter(Boolean)
+                  .join("\n")}
               >
                 {canReorder ? (
                   <button
@@ -217,7 +230,17 @@ function DayCell({ day, label, tasks, isToday, outside, togglingKey, onCreate, o
                   }}
                   type="button"
                 >
-                  {occurrence.title}
+                  {occurrence.kind === "meeting" ? (
+                    <>
+                      <span className="tk-meeting-meta">
+                        <Users aria-hidden="true" size={12} />
+                        Reunión{occurrence.time ? ` · ${occurrence.time}` : ""}
+                      </span>
+                      <span className="tk-meeting-title">{occurrence.title}</span>
+                    </>
+                  ) : (
+                    occurrence.title
+                  )}
                 </button>
                 {occurrence.recurrence ? <Repeat aria-label="Se repite" className="tk-task-repeat" size={11} /> : null}
               </div>
@@ -335,12 +358,13 @@ export function Calendar({ today, initialView, initialAnchor, initialShowDone }:
   async function reorderDay(day: IsoDate, visibleKeys: string[]) {
     const previous = occurrences;
     const dayOccurrences = occurrences.filter((occurrence) => occurrence.date === day);
-    const keys = mergeVisibleOrder(dayOccurrences.map(occurrenceKey), visibleKeys);
     const byKey = new Map(dayOccurrences.map((occurrence) => [occurrenceKey(occurrence), occurrence]));
-    setOccurrences([
-      ...occurrences.filter((occurrence) => occurrence.date !== day),
-      ...keys.map((key) => byKey.get(key)!),
-    ]);
+    // Meetings always stay on top, so a task dropped above them goes back below.
+    const ordered = meetingsFirst(
+      mergeVisibleOrder(dayOccurrences.map(occurrenceKey), visibleKeys).map((key) => byKey.get(key)!),
+    );
+    const keys = ordered.map(occurrenceKey);
+    setOccurrences([...occurrences.filter((occurrence) => occurrence.date !== day), ...ordered]);
 
     try {
       await fetchJson(
