@@ -7,6 +7,7 @@ import {
   formatDate,
   startOfMonth,
   startOfWeek,
+  weekday,
   type IsoDate,
 } from "@/modules/tareas/lib/dates";
 
@@ -25,34 +26,48 @@ export function isCalendarView(value: unknown): value is CalendarView {
 export type CalendarPeriod = {
   start: IsoDate;
   end: IsoDate;
-  /** Whole weeks, Monday to Sunday. */
+  /** Weeks from Monday, with 7 days or 5 (Monday to Friday) when weekends are hidden. */
   weeks: IsoDate[][];
   /** Month view only: the month being shown, to dim days of the previous/next month. */
   month: { start: IsoDate; end: IsoDate } | null;
 };
 
-export function getPeriod(view: CalendarView, anchor: IsoDate): CalendarPeriod {
-  let start: IsoDate;
-  let end: IsoDate;
+/** First Monday–Friday day on or after `date`. */
+function nextWorkday(date: IsoDate) {
+  return weekday(date) >= 5 ? addDays(date, 7 - weekday(date)) : date;
+}
+
+/** Last Monday–Friday day on or before `date`. */
+function previousWorkday(date: IsoDate) {
+  return weekday(date) >= 5 ? addDays(date, 4 - weekday(date)) : date;
+}
+
+export function getPeriod(view: CalendarView, anchor: IsoDate, showWeekends = true): CalendarPeriod {
+  const daysPerWeek = showWeekends ? 7 : 5;
+  const weekStarts: IsoDate[] = [];
   let month: CalendarPeriod["month"] = null;
 
   if (view === "month") {
     month = { start: startOfMonth(anchor), end: endOfMonth(anchor) };
-    start = startOfWeek(month.start);
-    end = addDays(startOfWeek(month.end), 6);
+    // Without weekends, skip a first or last row that would only show days of another month.
+    const first = showWeekends ? month.start : nextWorkday(month.start);
+    const last = showWeekends ? month.end : previousWorkday(month.end);
+
+    for (let monday = startOfWeek(first); monday <= last; monday = addDays(monday, 7)) {
+      weekStarts.push(monday);
+    }
   } else {
-    start = startOfWeek(anchor);
-    end = addDays(start, view === "week" ? 6 : 13);
+    weekStarts.push(startOfWeek(anchor));
+
+    if (view === "twoWeeks") {
+      weekStarts.push(addDays(weekStarts[0], 7));
+    }
   }
 
-  const days = eachDay(start, end);
-  const weeks: IsoDate[][] = [];
+  const weeks = weekStarts.map((monday) => eachDay(monday, addDays(monday, daysPerWeek - 1)));
+  const lastWeek = weeks[weeks.length - 1];
 
-  for (let index = 0; index < days.length; index += 7) {
-    weeks.push(days.slice(index, index + 7));
-  }
-
-  return { start, end, weeks, month };
+  return { start: weeks[0][0], end: lastWeek[lastWeek.length - 1], weeks, month };
 }
 
 /** Anchor of the previous (`-1`) or next (`1`) period. */

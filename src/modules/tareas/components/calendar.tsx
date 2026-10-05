@@ -1,12 +1,13 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight, Loader2, Plus, Repeat } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, GripVertical, Loader2, Plus, Repeat } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { errorMessage, fetchJson } from "@/core/ui/api-client";
 import { TaskDialog, type TaskDialogTarget } from "@/modules/tareas/components/task-dialog";
+import { tareasConfig } from "@/modules/tareas/config";
 import { dateParts, formatDate, WEEKDAY_NAMES, type IsoDate } from "@/modules/tareas/lib/dates";
-import type { Occurrence } from "@/modules/tareas/lib/occurrences";
+import { mergeVisibleOrder, type Occurrence } from "@/modules/tareas/lib/occurrences";
 import { CALENDAR_VIEWS, getPeriod, periodLabel, shiftAnchor, type CalendarView } from "@/modules/tareas/lib/periods";
 import { tareasApi } from "@/modules/tareas/module";
 
@@ -29,10 +30,26 @@ type DayCellProps = {
   onCreate: () => void;
   onEdit: (occurrence: Occurrence) => void;
   onToggle: (occurrence: Occurrence) => void;
+  /** Receives the keys of the visible tasks in their new order. */
+  onReorder: (keys: string[]) => void;
 };
 
-function DayCell({ day, label, tasks, isToday, outside, togglingKey, onCreate, onEdit, onToggle }: DayCellProps) {
+/** `shift`: height of the dragged task plus the gap, used to slide the others. */
+type DragState = { from: number; to: number; offset: number; shift: number };
+
+function moveItem<T>(items: T[], from: number, to: number) {
+  const next = [...items];
+  const [moved] = next.splice(from, 1);
+  next.splice(to, 0, moved);
+  return next;
+}
+
+function DayCell({ day, label, tasks, isToday, outside, togglingKey, onCreate, onEdit, onToggle, onReorder }: DayCellProps) {
   const listRef = useRef<HTMLUListElement>(null);
+  const [drag, setDrag] = useState<DragState | null>(null);
+  const dragStart = useRef<{ y: number; rects: DOMRect[] } | null>(null);
+  const [focusKey, setFocusKey] = useState<string | null>(null);
+  const canReorder = tasks.length > 1;
   const [isOverflowing, setIsOverflowing] = useState(false);
   const [isExpanded, setIsExpanded] = useState(false);
   const longLabel = formatDate(day, { weekday: "long", day: "numeric", month: "long" });
@@ -50,6 +67,77 @@ function DayCell({ day, label, tasks, isToday, outside, togglingKey, onCreate, o
     list.childNodes.forEach((child) => observer.observe(child as Element));
     return () => observer.disconnect();
   }, [tasks.length]);
+
+  // Keep keyboard focus on the handle of the task that was just moved.
+  useEffect(() => {
+    if (focusKey) {
+      listRef.current?.querySelector<HTMLElement>(`[data-key="${focusKey}"] .tk-task-handle`)?.focus();
+    }
+  }, [focusKey, tasks]);
+
+  function reorder(from: number, to: number) {
+    if (from !== to && to >= 0 && to < tasks.length) {
+      onReorder(moveItem(tasks.map(occurrenceKey), from, to));
+    }
+  }
+
+  function onDragStart(event: React.PointerEvent<HTMLButtonElement>, index: number) {
+    if (!listRef.current || (event.pointerType === "mouse" && event.button !== 0)) {
+      return;
+    }
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const rects = [...listRef.current.children].map((item) => item.getBoundingClientRect());
+    dragStart.current = { y: event.clientY, rects };
+    setDrag({ from: index, to: index, offset: 0, shift: rects[index].height + 3 });
+  }
+
+  function onDragMove(event: React.PointerEvent<HTMLButtonElement>) {
+    if (!drag || !dragStart.current) {
+      return;
+    }
+
+    const { y, rects } = dragStart.current;
+    const offset = event.clientY - y;
+    const dragged = rects[drag.from];
+    const center = dragged.top + dragged.height / 2 + offset;
+    const to = rects.filter((rect, index) => index !== drag.from && rect.top + rect.height / 2 < center).length;
+    setDrag({ ...drag, to, offset });
+  }
+
+  function onDragEnd() {
+    if (drag) {
+      reorder(drag.from, drag.to);
+    }
+
+    dragStart.current = null;
+    setDrag(null);
+  }
+
+  /** While dragging, the other tasks slide to show where the dragged one will land. */
+  function itemStyle(index: number): React.CSSProperties | undefined {
+    if (!drag) {
+      return undefined;
+    }
+
+    if (index === drag.from) {
+      return { transform: `translateY(${drag.offset}px)`, zIndex: 2, position: "relative" };
+    }
+
+    const { shift } = drag;
+
+    if (drag.from < drag.to && index > drag.from && index <= drag.to) {
+      return { transform: `translateY(${-shift}px)` };
+    }
+
+    if (drag.to < drag.from && index >= drag.to && index < drag.from) {
+      return { transform: `translateY(${shift}px)` };
+    }
+
+    return { transform: "translateY(0)" };
+  }
 
   return (
     <div className={`tk-day ${isToday ? "today" : ""} ${outside ? "outside" : ""} ${isExpanded ? "expanded" : ""}`} onClick={onCreate}>
@@ -74,17 +162,40 @@ function DayCell({ day, label, tasks, isToday, outside, togglingKey, onCreate, o
         ) : null}
       </div>
 
-      <ul className="tk-task-list" ref={listRef}>
-        {tasks.map((occurrence) => {
+      <ul className={`tk-task-list ${drag ? "dragging" : ""}`} ref={listRef}>
+        {tasks.map((occurrence, index) => {
           const key = occurrenceKey(occurrence);
 
           return (
-            <li key={key}>
+            <li data-key={key} key={key} style={itemStyle(index)}>
               <div
-                className={`tk-task ${occurrence.done ? "done" : ""} ${occurrence.color ? "colored" : ""}`}
+                className={`tk-task ${occurrence.done ? "done" : ""} ${occurrence.color ? "colored" : ""} ${drag?.from === index ? "is-dragged" : ""} ${canReorder ? "sortable" : ""}`}
                 style={occurrence.color ? ({ "--tk-color": occurrence.color } as React.CSSProperties) : undefined}
                 title={occurrence.notes ? `${occurrence.title}\n\n${occurrence.notes}` : occurrence.title}
               >
+                {canReorder ? (
+                  <button
+                    aria-label={`Mover «${occurrence.title}» (flechas arriba y abajo)`}
+                    className="tk-task-handle"
+                    onClick={(event) => event.stopPropagation()}
+                    onKeyDown={(event) => {
+                      const target = event.key === "ArrowUp" ? index - 1 : event.key === "ArrowDown" ? index + 1 : null;
+
+                      if (target !== null) {
+                        event.preventDefault();
+                        setFocusKey(key);
+                        reorder(index, target);
+                      }
+                    }}
+                    onLostPointerCapture={onDragEnd}
+                    onPointerDown={(event) => onDragStart(event, index)}
+                    onPointerMove={onDragMove}
+                    title="Arrastra para ordenar"
+                    type="button"
+                  >
+                    <GripVertical size={12} />
+                  </button>
+                ) : null}
                 <button
                   aria-label={occurrence.done ? `Marcar «${occurrence.title}» como pendiente` : `Marcar «${occurrence.title}» como realizada`}
                   aria-pressed={occurrence.done}
@@ -142,7 +253,7 @@ export function Calendar({ today, initialView, initialAnchor, initialShowDone }:
   const [dialog, setDialog] = useState<TaskDialogTarget | null>(null);
   const [togglingKey, setTogglingKey] = useState<string | null>(null);
 
-  const period = useMemo(() => getPeriod(view, anchor), [view, anchor]);
+  const period = useMemo(() => getPeriod(view, anchor, tareasConfig.showWeekends), [view, anchor]);
   const range = `${period.start}:${period.end}`;
   const isLoading = loadedRange !== range;
 
@@ -221,6 +332,28 @@ export function Calendar({ today, initialView, initialAnchor, initialShowDone }:
     }
   }
 
+  async function reorderDay(day: IsoDate, visibleKeys: string[]) {
+    const previous = occurrences;
+    const dayOccurrences = occurrences.filter((occurrence) => occurrence.date === day);
+    const keys = mergeVisibleOrder(dayOccurrences.map(occurrenceKey), visibleKeys);
+    const byKey = new Map(dayOccurrences.map((occurrence) => [occurrenceKey(occurrence), occurrence]));
+    setOccurrences([
+      ...occurrences.filter((occurrence) => occurrence.date !== day),
+      ...keys.map((key) => byKey.get(key)!),
+    ]);
+
+    try {
+      await fetchJson(
+        tareasApi.dayOrder,
+        { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ date: day, keys }) },
+        "No se pudo guardar el orden.",
+      );
+    } catch (requestError) {
+      setOccurrences(previous);
+      setError(errorMessage(requestError, "No se pudo guardar el orden."));
+    }
+  }
+
   const doneCount = occurrences.filter((occurrence) => occurrence.done).length;
 
   return (
@@ -276,9 +409,9 @@ export function Calendar({ today, initialView, initialAnchor, initialShowDone }:
 
       {error ? <div className="message error">{error}</div> : null}
 
-      <div className={`tk-calendar tk-view-${view}`}>
+      <div className={`tk-calendar tk-view-${view}`} style={{ "--tk-columns": period.weeks[0].length } as React.CSSProperties}>
         <div className="tk-weekday-row" aria-hidden="true">
-          {WEEKDAY_NAMES.map((name) => (
+          {WEEKDAY_NAMES.slice(0, period.weeks[0].length).map((name) => (
             <div className="tk-weekday-name" key={name}>
               {name}
             </div>
@@ -295,6 +428,7 @@ export function Calendar({ today, initialView, initialAnchor, initialShowDone }:
                 label={dateParts(day).day === 1 || (day === period.start && !period.month) ? formatDate(day, { day: "numeric", month: "short" }) : String(dateParts(day).day)}
                 onCreate={() => setDialog({ mode: "create", date: day })}
                 onEdit={(occurrence) => setDialog({ mode: "edit", occurrence })}
+                onReorder={(keys) => void reorderDay(day, keys)}
                 onToggle={(occurrence) => void toggleDone(occurrence)}
                 outside={Boolean(period.month && (day < period.month.start || day > period.month.end))}
                 tasks={byDay.get(day) ?? []}

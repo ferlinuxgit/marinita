@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 
 import { buildChecklist, cloneStructure, countProgress, type ChecklistItem } from "@/modules/tareas/lib/checklist";
-import { expandOccurrences, type ExceptionRecord, type TaskRecord } from "@/modules/tareas/lib/occurrences";
+import {
+  applyDayOrders,
+  expandOccurrences,
+  mergeVisibleOrder,
+  type ExceptionRecord,
+  type TaskRecord,
+} from "@/modules/tareas/lib/occurrences";
 import { getPeriod, periodLabel, shiftAnchor } from "@/modules/tareas/lib/periods";
 
 const weeklyMonday: TaskRecord = {
@@ -79,6 +85,48 @@ describe("expandOccurrences", () => {
   });
 });
 
+describe("day order", () => {
+  const task = (id: string, date: string, createdAt: string): TaskRecord => ({
+    ...weeklyMonday,
+    id,
+    title: id,
+    recurrence: null,
+    date,
+    createdAt,
+  });
+  const tasks = [
+    task("a", "2026-10-05", "2026-10-01T00:00:00Z"),
+    task("b", "2026-10-05", "2026-10-02T00:00:00Z"),
+    task("c", "2026-10-05", "2026-10-03T00:00:00Z"),
+    task("d", "2026-10-06", "2026-10-01T00:00:00Z"),
+  ];
+
+  it("applies the saved order per day; unknown tasks go after, by creation", () => {
+    const occurrences = expandOccurrences([...tasks, weeklyMonday], [], "2026-10-05", "2026-10-06");
+    const ordered = applyDayOrders(occurrences, new Map([["2026-10-05", ["c:2026-10-05", "s1:2026-10-05", "gone:2026-10-05", "a:2026-10-05"]]]));
+
+    expect(ordered.map((item) => item.taskId)).toEqual(["c", "s1", "a", "b", "d"]);
+  });
+
+  it("keeps each occurrence of a series ordered on its own day", () => {
+    const other = { ...weeklyMonday, id: "s2", createdAt: "2026-10-02T00:00:00Z" };
+    const occurrences = expandOccurrences([weeklyMonday, other], [], "2026-10-05", "2026-10-12");
+    const ordered = applyDayOrders(occurrences, new Map([["2026-10-12", ["s2:2026-10-12", "s1:2026-10-12"]]]));
+
+    expect(ordered.map((item) => `${item.taskId}@${item.date}`)).toEqual([
+      "s1@2026-10-05",
+      "s2@2026-10-05",
+      "s2@2026-10-12",
+      "s1@2026-10-12",
+    ]);
+  });
+
+  it("reorders visible tasks without moving hidden (done) ones", () => {
+    expect(mergeVisibleOrder(["a", "x", "b", "c"], ["c", "a", "b"])).toEqual(["c", "x", "a", "b"]);
+    expect(mergeVisibleOrder(["a", "b"], ["b", "a"])).toEqual(["b", "a"]);
+  });
+});
+
 describe("periods", () => {
   it("week, two weeks and month start on Monday", () => {
     expect(getPeriod("week", "2026-10-08")).toMatchObject({ start: "2026-10-05", end: "2026-10-11" });
@@ -89,6 +137,32 @@ describe("periods", () => {
     expect(month).toMatchObject({ start: "2026-01-26", end: "2026-03-01", month: { start: "2026-02-01", end: "2026-02-28" } });
     expect(month.weeks).toHaveLength(5);
     expect(getPeriod("month", "2026-03-10").weeks).toHaveLength(6);
+  });
+
+  it("hides Saturday and Sunday when weekends are off", () => {
+    const week = getPeriod("week", "2026-10-08", false);
+    expect(week).toMatchObject({ start: "2026-10-05", end: "2026-10-09" });
+    expect(week.weeks).toEqual([["2026-10-05", "2026-10-06", "2026-10-07", "2026-10-08", "2026-10-09"]]);
+    expect(periodLabel(week, "2026-10-05")).toBe("5 oct – 9 oct");
+
+    const twoWeeks = getPeriod("twoWeeks", "2026-10-08", false);
+    expect(twoWeeks).toMatchObject({ start: "2026-10-05", end: "2026-10-16" });
+    expect(twoWeeks.weeks.map((days) => days.length)).toEqual([5, 5]);
+    expect(periodLabel(twoWeeks, "2026-10-05")).toBe("5 oct – 16 oct");
+  });
+
+  it("month without weekends skips rows that only had weekend days of the month", () => {
+    // August 2026 starts on Saturday and ends on Monday the 31st.
+    const august = getPeriod("month", "2026-08-15", false);
+    expect(august.start).toBe("2026-08-03");
+    expect(august.end).toBe("2026-09-04");
+    expect(august.weeks).toHaveLength(5);
+    expect(august.weeks.every((days) => days.length === 5)).toBe(true);
+
+    // May 2027 ends on Monday the 31st; that week is kept.
+    expect(getPeriod("month", "2027-05-10", false).end).toBe("2027-06-04");
+    // October 2026 (1st is a Thursday).
+    expect(getPeriod("month", "2026-10-10", false)).toMatchObject({ start: "2026-09-28", end: "2026-10-30" });
   });
 
   it("navigates by period", () => {

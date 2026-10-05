@@ -22,6 +22,7 @@ export const tareasApi = {
   tasks: moduleApi(tareasModule, "/tasks"),
   task: (taskId: string) => moduleApi(tareasModule, `/tasks/${taskId}`),
   taskDone: (taskId: string) => moduleApi(tareasModule, `/tasks/${taskId}/done`),
+  dayOrder: moduleApi(tareasModule, "/day-order"),
   companies: moduleApi(tareasModule, "/companies"),
   company: (companyId: string) => moduleApi(tareasModule, `/companies/${companyId}`),
   companyClosings: (companyId: string) => moduleApi(tareasModule, `/companies/${companyId}/closings`),

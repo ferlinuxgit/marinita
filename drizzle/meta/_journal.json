@@ -15,6 +15,13 @@
       "when": 1791195335200,
       "tag": "0001_tareas",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1791198078014,
+      "tag": "0002_tareas_day_order",
+      "breakpoints": true
     }
   ]
 }

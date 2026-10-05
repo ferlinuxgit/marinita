@@ -171,7 +171,7 @@
 .tk-weekday-row,
 .tk-week {
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
+  grid-template-columns: repeat(var(--tk-columns, 7), minmax(0, 1fr));
 }
 
 .tk-weekday-name {
@@ -329,6 +329,61 @@
   border-color: color-mix(in srgb, var(--tk-color) 40%, white);
   border-left: 3px solid var(--tk-color);
   background: color-mix(in srgb, var(--tk-color) 14%, white);
+}
+
+.tk-task-list li {
+  transition: transform 0.15s ease;
+}
+
+.tk-task-list.dragging li {
+  user-select: none;
+}
+
+.tk-task-list li[style*="z-index"] {
+  transition: none;
+}
+
+.tk-task.is-dragged {
+  box-shadow: 0 6px 18px rgba(24, 35, 31, 0.22);
+  opacity: 0.95;
+}
+
+.tk-task.sortable {
+  padding-left: 1px;
+}
+
+.tk-task-handle {
+  width: 14px;
+  height: 20px;
+  flex: none;
+  border: 0;
+  border-radius: 3px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+  cursor: grab;
+  opacity: 0;
+  touch-action: none;
+}
+
+.tk-task:hover .tk-task-handle,
+.tk-task-handle:focus-visible,
+.tk-task.is-dragged .tk-task-handle {
+  opacity: 1;
+}
+
+.tk-task.is-dragged .tk-task-handle {
+  cursor: grabbing;
+}
+
+@media (hover: none) {
+  .tk-task-handle {
+    width: 22px;
+    height: 28px;
+    opacity: 0.7;
+  }
 }
 
 .tk-task-check {

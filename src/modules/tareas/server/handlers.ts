@@ -8,6 +8,7 @@ import { tareasConfig } from "@/modules/tareas/config";
 import { diffDays } from "@/modules/tareas/lib/dates";
 import {
   closingCreateSchema,
+  dayOrderSchema,
   editScopeSchema,
   isoDateSchema,
   itemCreateSchema,
@@ -36,6 +37,7 @@ import {
   createTask,
   deleteTask,
   listOccurrences,
+  saveDayOrder,
   setTaskDone,
   updateTask,
 } from "@/modules/tareas/server/tasks-repository";
@@ -87,6 +89,12 @@ export const deleteTaskHandler = withUser<{ taskId: string }>(async ({ request, 
 export const setTaskDoneHandler = withUser<{ taskId: string }>(async ({ request, user, params }) => {
   const { occurrenceDate, done } = taskDoneSchema.parse(await readJson(request));
   await setTaskDone(user.id, params.taskId, occurrenceDate, done);
+  return ok();
+});
+
+export const saveDayOrderHandler = withUser(async ({ request, user }) => {
+  const { date, keys } = dayOrderSchema.parse(await readJson(request));
+  await saveDayOrder(user.id, date, keys);
   return ok();
 });
 

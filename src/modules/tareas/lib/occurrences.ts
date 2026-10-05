@@ -129,3 +129,29 @@ export function expandOccurrences(
     .sort((a, b) => a.occurrence.date.localeCompare(b.occurrence.date) || a.order - b.order)
     .map((item) => item.occurrence);
 }
+
+/**
+ * Applies the manual order saved for each day. Occurrences not in the saved order (new tasks, or
+ * keys that no longer exist) keep their default order after the ordered ones.
+ */
+export function applyDayOrders(occurrences: Occurrence[], orders: Map<IsoDate, string[]>) {
+  const position = (occurrence: Occurrence) => {
+    const index = orders.get(occurrence.date)?.indexOf(exceptionKey(occurrence.taskId, occurrence.occurrenceDate)) ?? -1;
+    return index === -1 ? Number.POSITIVE_INFINITY : index;
+  };
+
+  return occurrences
+    .map((occurrence, index) => ({ occurrence, index, position: position(occurrence) }))
+    .sort((a, b) => a.occurrence.date.localeCompare(b.occurrence.date) || a.position - b.position || a.index - b.index)
+    .map((item) => item.occurrence);
+}
+
+/**
+ * New full order of a day after reordering only the visible tasks (done tasks may be hidden):
+ * hidden tasks keep their slots and the visible ones fill the rest in their new order.
+ */
+export function mergeVisibleOrder(allKeys: string[], visibleKeys: string[]) {
+  const visible = new Set(visibleKeys);
+  const queue = [...visibleKeys];
+  return allKeys.map((key) => (visible.has(key) ? (queue.shift() ?? key) : key));
+}

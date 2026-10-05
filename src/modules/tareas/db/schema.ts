@@ -7,6 +7,7 @@ import {
   integer,
   jsonb,
   pgTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -57,6 +58,19 @@ export const tareasTaskExceptions = pgTable(
     date: date("date", { mode: "string" }),
   },
   (table) => [uniqueIndex("tareas_task_exceptions_occurrence_idx").on(table.taskId, table.occurrenceDate)],
+);
+
+/** Manual order of the tasks shown on one day, as occurrence keys (`taskId:occurrenceDate`). */
+export const tareasDayOrders = pgTable(
+  "tareas_day_orders",
+  {
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    date: date("date", { mode: "string" }).notNull(),
+    keys: jsonb("keys").$type<string[]>().notNull(),
+  },
+  (table) => [primaryKey({ columns: [table.userId, table.date] })],
 );
 
 export const tareasCompanies = pgTable(

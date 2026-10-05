@@ -6,9 +6,9 @@ import { and, between, eq, gte, inArray, isNotNull, isNull, or } from "drizzle-o
 
 import { db } from "@/core/db";
 import { NotFoundError, UserFacingError } from "@/core/http/errors";
-import { tareasTaskExceptions, tareasTasks } from "@/modules/tareas/db/schema";
+import { tareasDayOrders, tareasTaskExceptions, tareasTasks } from "@/modules/tareas/db/schema";
 import { addDays, diffDays, type IsoDate } from "@/modules/tareas/lib/dates";
-import { expandOccurrences, type TaskRecord } from "@/modules/tareas/lib/occurrences";
+import { applyDayOrders, expandOccurrences, type TaskRecord } from "@/modules/tareas/lib/occurrences";
 import { normalizeRecurrence, occursOn } from "@/modules/tareas/lib/recurrence";
 import type { EditScope, TaskInput } from "@/modules/tareas/lib/validation";
 
@@ -117,7 +117,23 @@ export async function listOccurrences(userId: string, from: IsoDate, to: IsoDate
         )
     : [];
 
-  return expandOccurrences([...singles, ...series].map(toRecord), exceptions, from, to);
+  const orders = await db
+    .select({ date: tareasDayOrders.date, keys: tareasDayOrders.keys })
+    .from(tareasDayOrders)
+    .where(and(eq(tareasDayOrders.userId, userId), between(tareasDayOrders.date, from, to)));
+  const occurrences = expandOccurrences([...singles, ...series].map(toRecord), exceptions, from, to);
+
+  return applyDayOrders(occurrences, new Map(orders.map((order) => [order.date, order.keys])));
+}
+
+/** Saves the manual order of the tasks of one day. */
+export async function saveDayOrder(userId: string, date: IsoDate, keys: string[]) {
+  const uniqueKeys = [...new Set(keys)];
+
+  await db
+    .insert(tareasDayOrders)
+    .values({ userId, date, keys: uniqueKeys })
+    .onConflictDoUpdate({ target: [tareasDayOrders.userId, tareasDayOrders.date], set: { keys: uniqueKeys } });
 }
 
 export async function createTask(userId: string, input: TaskInput) {

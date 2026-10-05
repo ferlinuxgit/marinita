@@ -75,3 +75,10 @@ export const reorderSchema = z.object({
   parentId: z.string().min(1).nullable(),
   ids: z.array(z.string().min(1)).min(1).max(1000),
 });
+
+export const dayOrderSchema = z.object({
+  date: isoDateSchema,
+  keys: z
+    .array(z.string().regex(/^[^:]+:\d{4}-\d{2}-\d{2}$/))
+    .max(500),
+});

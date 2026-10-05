@@ -2,6 +2,8 @@
 export const tareasConfig = {
   /** Time zone used to decide which calendar day is "today". */
   timeZone: "Europe/Madrid",
+  /** Show Saturday and Sunday columns in the calendar. Tasks on hidden days are not shown. */
+  showWeekends: false,
   /** Swatches offered in the task form. Tasks store the hex value; `null` means no color. */
   colors: [
     { value: "#2563eb", label: "Azul" },
