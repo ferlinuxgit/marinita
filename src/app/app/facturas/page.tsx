@@ -1,19 +1,5 @@
-import { redirect } from "next/navigation";
+import { InvoiceCostCenterAnalyzer } from "@/modules/facturas/components/invoice-cost-center-analyzer";
 
-import { AppShell } from "@/components/app-shell";
-import { InvoiceCostCenterAnalyzer } from "@/components/invoice-cost-center-analyzer";
-import { getCurrentSession } from "@/lib/session";
-
-export default async function InvoiceCostCentersPage() {
-  const session = await getCurrentSession();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  return (
-    <AppShell userEmail={session.user.email}>
-      <InvoiceCostCenterAnalyzer />
-    </AppShell>
-  );
+export default function InvoiceCostCentersPage() {
+  return <InvoiceCostCenterAnalyzer />;
 }

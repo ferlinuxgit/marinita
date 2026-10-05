@@ -1,0 +1,1121 @@
+/* Tareas y cierres module. Every class is prefixed with `tk-`. */
+
+.tk-module {
+  display: grid;
+  gap: 20px;
+}
+
+.tk-module-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tk-module-header h1 {
+  margin: 0;
+}
+
+.tk-tabs {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 3px;
+  display: inline-flex;
+  gap: 3px;
+  background: var(--surface);
+}
+
+.tk-tab {
+  min-height: 36px;
+  border-radius: 6px;
+  padding: 0 14px;
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--muted);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.tk-tab:hover {
+  color: var(--foreground);
+  background: var(--surface-soft);
+}
+
+.tk-tab.active {
+  color: white;
+  background: var(--primary);
+}
+
+.tk-section-title {
+  margin: 0;
+  font-size: 22px;
+}
+
+.tk-icon-button {
+  width: 40px;
+  padding: 0;
+}
+
+.tk-icon-ghost {
+  width: 32px;
+  height: 32px;
+  border: 0;
+  border-radius: 6px;
+  display: inline-grid;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+}
+
+.tk-icon-ghost:hover {
+  color: var(--foreground);
+  background: var(--surface-soft);
+}
+
+.tk-delete:hover {
+  border-color: #f1b8b2;
+  color: var(--danger);
+  background: #fff1f0;
+}
+
+/* --- Calendar ----------------------------------------------------------------------------- */
+
+.tk-calendar-page {
+  display: grid;
+  gap: 14px;
+}
+
+.tk-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tk-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tk-period {
+  min-width: 150px;
+  margin: 0 0 0 6px;
+  font-size: 19px;
+}
+
+.tk-period::first-letter {
+  text-transform: uppercase;
+}
+
+.tk-segmented {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  display: inline-flex;
+  overflow: hidden;
+  background: var(--surface-soft);
+}
+
+.tk-segmented button {
+  min-height: 38px;
+  border: 0;
+  padding: 0 12px;
+  color: var(--muted);
+  background: transparent;
+  font-weight: 700;
+}
+
+.tk-segmented button + button {
+  border-left: 1px solid var(--border);
+}
+
+.tk-segmented button.active {
+  color: white;
+  background: var(--primary);
+}
+
+.tk-date-jump {
+  width: auto;
+  min-height: 40px;
+  padding: 6px 10px;
+}
+
+.tk-check-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--muted);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.tk-check-label input,
+.tk-checkbox,
+.tk-done-toggle input {
+  width: 17px;
+  height: 17px;
+  accent-color: var(--primary);
+}
+
+.tk-calendar {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.tk-weekday-row,
+.tk-week {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+}
+
+.tk-weekday-name {
+  padding: 9px 10px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.tk-week + .tk-week {
+  border-top: 1px solid #e3e8e3;
+}
+
+.tk-day {
+  --tk-day-height: 220px;
+  height: var(--tk-day-height);
+  min-width: 0;
+  padding: 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+}
+
+.tk-day + .tk-day {
+  border-left: 1px solid #e9ede9;
+}
+
+.tk-view-week .tk-day {
+  --tk-day-height: min(62vh, 520px);
+}
+
+.tk-view-month .tk-day {
+  --tk-day-height: 128px;
+}
+
+.tk-day.expanded {
+  height: auto;
+  min-height: var(--tk-day-height);
+}
+
+.tk-day.expanded .tk-task-list {
+  overflow: visible;
+}
+
+.tk-day-more {
+  flex: none;
+  border: 0;
+  border-radius: 4px;
+  padding: 3px 4px;
+  color: var(--primary-strong);
+  background: transparent;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: left;
+}
+
+.tk-day-more:hover {
+  background: var(--surface-soft);
+}
+
+.tk-day:hover {
+  background: #fbfcfa;
+}
+
+.tk-day.outside {
+  background: #f7f7f3;
+}
+
+.tk-day.outside .tk-day-number {
+  color: #9aa59f;
+}
+
+.tk-day.outside .tk-task {
+  opacity: 0.75;
+}
+
+.tk-day.today {
+  background: #f1f8f5;
+}
+
+.tk-day-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.tk-day-number {
+  min-width: 28px;
+  height: 26px;
+  border: 0;
+  border-radius: 13px;
+  padding: 0 7px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--foreground);
+  background: transparent;
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.tk-day-number:hover {
+  background: var(--surface-soft);
+}
+
+.tk-day.today .tk-day-number {
+  color: white;
+  background: var(--primary);
+}
+
+.tk-day-mobile-name {
+  display: none;
+  font-weight: 400;
+  text-transform: capitalize;
+}
+
+.tk-day-count {
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.tk-task-list {
+  min-height: 0;
+  margin: 0;
+  padding: 0 2px 0 0;
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 3px;
+  overflow-y: auto;
+  list-style: none;
+  overscroll-behavior: contain;
+}
+
+.tk-task {
+  --tk-color: #9aa59f;
+  min-height: 25px;
+  border: 1px solid #dfe4df;
+  border-radius: 5px;
+  padding: 2px 5px 2px 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: #f4f6f3;
+  cursor: default;
+}
+
+.tk-task.colored {
+  border-color: color-mix(in srgb, var(--tk-color) 40%, white);
+  border-left: 3px solid var(--tk-color);
+  background: color-mix(in srgb, var(--tk-color) 14%, white);
+}
+
+.tk-task-check {
+  width: 15px;
+  height: 15px;
+  flex: none;
+  border: 1.5px solid color-mix(in srgb, var(--tk-color) 70%, #4b5563);
+  border-radius: 4px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  color: white;
+  background: white;
+}
+
+.tk-task-check:hover {
+  border-color: var(--primary);
+}
+
+.tk-task-title {
+  min-width: 0;
+  flex: 1;
+  border: 0;
+  padding: 2px 0;
+  overflow: hidden;
+  color: var(--foreground);
+  background: transparent;
+  font-size: 13px;
+  line-height: 1.25;
+  text-align: left;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tk-task-repeat {
+  flex: none;
+  color: var(--muted);
+}
+
+.tk-task.done {
+  opacity: 0.62;
+}
+
+.tk-task.done .tk-task-check {
+  border-color: var(--ok);
+  background: var(--ok);
+}
+
+.tk-task.done .tk-task-title {
+  color: var(--muted);
+  text-decoration: line-through;
+}
+
+/* --- Task dialog -------------------------------------------------------------------------- */
+
+.tk-task-form {
+  gap: 14px;
+}
+
+.tk-label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.field label svg {
+  vertical-align: -2px;
+}
+
+.tk-title-input {
+  min-height: 0;
+  resize: vertical;
+  line-height: 1.35;
+}
+
+.tk-notes {
+  resize: vertical;
+  line-height: 1.4;
+}
+
+.tk-form-row {
+  display: flex;
+  align-items: end;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.tk-form-row .field {
+  flex: 1 1 180px;
+}
+
+.tk-done-toggle {
+  min-height: 42px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+}
+
+.tk-swatches {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tk-swatch {
+  width: 28px;
+  height: 28px;
+  border: 2px solid white;
+  border-radius: 50%;
+  padding: 0;
+  box-shadow: 0 0 0 1px var(--border);
+}
+
+.tk-swatch.selected {
+  box-shadow: 0 0 0 2px var(--foreground);
+}
+
+.tk-swatch-none {
+  width: auto;
+  border-radius: 14px;
+  padding: 0 10px;
+  color: var(--muted);
+  background: var(--surface-soft);
+  font-size: 13px;
+}
+
+.tk-repeat-box {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px;
+  display: grid;
+  gap: 12px;
+  background: var(--surface-soft);
+}
+
+.tk-inline-field {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.tk-inline-field label {
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tk-number {
+  width: 76px;
+  min-height: 38px;
+}
+
+.tk-unit,
+.tk-until {
+  width: auto;
+  min-height: 38px;
+}
+
+.tk-tight {
+  gap: 6px;
+}
+
+.tk-weekdays {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.tk-weekday {
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  color: var(--foreground);
+  background: white;
+  font-weight: 700;
+}
+
+.tk-weekday.selected {
+  border-color: var(--primary);
+  color: white;
+  background: var(--primary);
+}
+
+.tk-link-button {
+  border: 0;
+  padding: 0;
+  color: var(--primary);
+  background: none;
+  font-weight: 700;
+  text-decoration: underline;
+}
+
+.tk-repeat-summary {
+  margin: 0;
+  color: var(--primary-strong);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tk-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.tk-dialog-actions .tk-delete {
+  margin-right: auto;
+}
+
+.tk-scope-intro {
+  margin: 0;
+}
+
+.tk-scope-options {
+  display: grid;
+  gap: 8px;
+}
+
+.tk-scope-option {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 11px 12px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.tk-scope-option:has(input:checked) {
+  border-color: var(--primary);
+  background: #eef6f3;
+}
+
+.tk-scope-option span {
+  display: grid;
+  gap: 3px;
+}
+
+.tk-scope-option small {
+  color: var(--muted);
+}
+
+.tk-scope-option.disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* --- Companies & closings ----------------------------------------------------------------- */
+
+.tk-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.tk-list-item {
+  min-height: 62px;
+  padding: 10px 16px;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+
+.tk-list-item + .tk-list-item {
+  border-top: 1px solid var(--border);
+}
+
+.tk-list-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  color: var(--primary);
+  background: var(--surface-soft);
+}
+
+.tk-list-link {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  text-decoration: none;
+}
+
+.tk-list-link strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tk-list-link:hover strong {
+  color: var(--primary-strong);
+  text-decoration: underline;
+}
+
+.tk-list-link span {
+  font-size: 13px;
+}
+
+.tk-list-chevron {
+  display: grid;
+  color: var(--muted);
+}
+
+.tk-inline-name {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tk-inline-name-form {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.tk-inline-name-form .input {
+  min-width: 0;
+  max-width: 420px;
+}
+
+.tk-add-form {
+  border-top: 1px solid var(--border);
+  padding: 14px 16px;
+  display: flex;
+  gap: 10px;
+}
+
+.tk-breadcrumb {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.tk-breadcrumb a {
+  color: var(--primary-strong);
+}
+
+.tk-closings-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr);
+  align-items: start;
+  gap: 20px;
+}
+
+.tk-source {
+  margin: 0;
+  border: 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.tk-source legend {
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.tk-radio {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.tk-radio input {
+  accent-color: var(--primary);
+}
+
+.tk-radio.disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* --- Checklist ---------------------------------------------------------------------------- */
+
+.tk-checklist-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tk-checklist-meta {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.tk-save-status {
+  min-height: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.tk-save-status.error {
+  color: var(--danger);
+  font-weight: 700;
+}
+
+.tk-save-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.tk-progress {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.tk-progress-bar {
+  width: min(320px, 100%);
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  background: #e2e8e3;
+}
+
+.tk-progress-bar span {
+  height: 100%;
+  display: block;
+  background: var(--ok);
+  transition: width 0.2s ease;
+}
+
+.tk-checklist-panel {
+  overflow: hidden;
+}
+
+table.tk-checklist {
+  min-width: 760px;
+  table-layout: fixed;
+}
+
+.tk-checklist col.tk-col-task {
+  width: 24%;
+}
+
+.tk-checklist col.tk-col-detail {
+  width: 24%;
+}
+
+.tk-checklist col.tk-col-done {
+  width: 92px;
+}
+
+.tk-checklist th {
+  padding: 10px 10px;
+  background: var(--surface-soft);
+}
+
+.tk-checklist td {
+  padding: 3px 6px;
+  border-bottom: 1px solid #e8ece8;
+  vertical-align: top;
+  white-space: normal;
+}
+
+.tk-checklist .tk-col-done {
+  text-align: center;
+}
+
+.tk-checklist td.tk-col-done {
+  padding-top: 9px;
+}
+
+.tk-checklist tbody.tk-group:not(:first-of-type) tr:first-child td {
+  border-top: 1px solid #cfd7d0;
+}
+
+.tk-checklist td[rowspan] {
+  background: #f8faf8;
+}
+
+.tk-checklist td[rowspan] .tk-cell-name {
+  font-weight: 700;
+}
+
+.tk-no-detail {
+  background: repeating-linear-gradient(135deg, transparent 0 6px, #f4f6f3 6px 7px);
+}
+
+.tk-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 2px;
+}
+
+.tk-cell-input {
+  width: 100%;
+  min-height: 30px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 5px 6px;
+  display: block;
+  overflow: hidden;
+  color: var(--foreground);
+  background: transparent;
+  line-height: 1.35;
+  resize: none;
+}
+
+.tk-cell-input:hover {
+  border-color: var(--border);
+}
+
+.tk-cell-input:focus {
+  border-color: var(--primary);
+  outline: none;
+  background: white;
+}
+
+.tk-cell-input::placeholder {
+  color: #a9b3ad;
+}
+
+.tk-row-actions {
+  padding-top: 3px;
+  display: flex;
+  flex: none;
+  opacity: 0.35;
+}
+
+.tk-checklist tr:hover .tk-row-actions,
+.tk-cell:focus-within .tk-row-actions {
+  opacity: 1;
+}
+
+.tk-row-button {
+  width: 26px;
+  height: 26px;
+  border: 0;
+  border-radius: 4px;
+  display: grid;
+  place-items: center;
+  color: var(--muted);
+  background: transparent;
+}
+
+.tk-row-button:hover:not(:disabled) {
+  color: var(--foreground);
+  background: var(--surface-soft);
+}
+
+.tk-row-button.danger:hover:not(:disabled) {
+  color: var(--danger);
+  background: #fff1f0;
+}
+
+.tk-row-button:disabled {
+  opacity: 0.3;
+}
+
+.tk-checklist-footer {
+  border-top: 1px solid var(--border);
+  padding: 12px 14px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  font-size: 13px;
+}
+
+.tk-checklist-footer svg {
+  vertical-align: -2px;
+}
+
+/* --- Small screens ------------------------------------------------------------------------ */
+
+@media (hover: none) {
+  .tk-row-actions {
+    opacity: 1;
+  }
+}
+
+@media (max-width: 860px) {
+  .tk-closings-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 720px) {
+  .tk-toolbar,
+  .tk-toolbar-group {
+    align-items: stretch;
+  }
+
+  .tk-toolbar-group {
+    width: 100%;
+  }
+
+  .tk-segmented {
+    flex: 1 1 100%;
+  }
+
+  .tk-date-jump {
+    flex: 1;
+  }
+
+  .tk-toolbar-group > .button:last-child {
+    flex: 1 1 100%;
+  }
+
+  .tk-period {
+    min-width: 0;
+    flex: 1;
+    align-self: center;
+  }
+
+  .tk-segmented button {
+    flex: 1;
+    padding: 0 6px;
+  }
+
+  /* The grid turns into a list of days: seven columns do not fit on a phone. */
+  .tk-weekday-row {
+    display: none;
+  }
+
+  .tk-week {
+    display: block;
+  }
+
+  .tk-day,
+  .tk-view-week .tk-day,
+  .tk-view-month .tk-day {
+    height: auto;
+    min-height: 44px;
+    padding: 6px 8px 8px;
+  }
+
+  .tk-day + .tk-day {
+    border-left: 0;
+    border-top: 1px solid #e9ede9;
+  }
+
+  .tk-day-mobile-name {
+    display: inline;
+  }
+
+  .tk-day-number {
+    height: 30px;
+    border-radius: 15px;
+  }
+
+  .tk-task {
+    min-height: 34px;
+  }
+
+  .tk-task-check {
+    width: 20px;
+    height: 20px;
+  }
+
+  .tk-task-title {
+    font-size: 14px;
+    white-space: normal;
+  }
+
+  .tk-day-more {
+    display: none;
+  }
+
+  .tk-add-form {
+    flex-direction: column;
+  }
+
+  /* Checklist as cards: every column stays visible without scrolling sideways. */
+  table.tk-checklist,
+  .tk-checklist tbody,
+  .tk-checklist tr,
+  .tk-checklist td {
+    display: block;
+    min-width: 0;
+  }
+
+  .tk-checklist colgroup,
+  .tk-checklist thead {
+    display: none;
+  }
+
+  .tk-checklist tbody.tk-group {
+    border-bottom: 1px solid #cfd7d0;
+  }
+
+  .tk-checklist tbody.tk-group:not(:first-of-type) tr:first-child td {
+    border-top: 0;
+  }
+
+  .tk-checklist tr {
+    padding: 6px 10px 8px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr);
+    grid-template-areas:
+      "task task"
+      "done detail"
+      "notes notes";
+  }
+
+  .tk-checklist tr + tr {
+    border-top: 1px solid #e8ece8;
+  }
+
+  .tk-checklist tr.tk-simple-row {
+    grid-template-areas:
+      "done task"
+      "notes notes";
+  }
+
+  .tk-checklist td {
+    border: 0;
+    padding: 0;
+  }
+
+  .tk-checklist td.tk-col-task {
+    grid-area: task;
+    margin: -6px -10px 4px;
+    padding: 6px 10px;
+  }
+
+  .tk-checklist tr.tk-simple-row td.tk-col-task {
+    margin: 0;
+    padding: 0;
+    background: transparent;
+  }
+
+  .tk-checklist td.tk-col-detail {
+    grid-area: detail;
+  }
+
+  .tk-checklist td.tk-no-detail {
+    display: none;
+  }
+
+  .tk-checklist td.tk-col-done {
+    grid-area: done;
+    padding-top: 7px;
+    text-align: left;
+  }
+
+  .tk-checklist td.tk-col-notes {
+    grid-area: notes;
+    padding-left: 34px;
+  }
+
+  .tk-checklist td.tk-col-notes::before {
+    content: "Observaciones";
+    display: block;
+    padding: 2px 6px 0;
+    color: var(--muted);
+    font-size: 11px;
+    font-weight: 700;
+    text-transform: uppercase;
+  }
+
+  .tk-checkbox {
+    width: 22px;
+    height: 22px;
+  }
+
+  .tk-cell-input {
+    font-size: 16px;
+  }
+
+  .tk-save-error {
+    align-items: stretch;
+    flex-direction: column;
+  }
+}

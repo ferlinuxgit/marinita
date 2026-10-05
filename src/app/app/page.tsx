@@ -1,19 +1,5 @@
-import { redirect } from "next/navigation";
+import { ModuleGrid } from "@/core/ui/module-grid";
 
-import { AppShell } from "@/components/app-shell";
-import { MiniApps } from "@/components/mini-apps";
-import { getCurrentSession } from "@/lib/session";
-
-export default async function AppPage() {
-  const session = await getCurrentSession();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
-  return (
-    <AppShell userEmail={session.user.email}>
-      <MiniApps />
-    </AppShell>
-  );
+export default function AppHomePage() {
+  return <ModuleGrid />;
 }

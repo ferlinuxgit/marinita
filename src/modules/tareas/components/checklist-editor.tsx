@@ -1,0 +1,509 @@
+"use client";
+
+import { ArrowDown, ArrowUp, Check, ChevronRight, CircleAlert, ListPlus, Loader2, Plus, Trash2 } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+
+import { errorMessage, fetchJson } from "@/core/ui/api-client";
+import { InlineNameEditor } from "@/modules/tareas/components/inline-name-editor";
+import { tareasConfig } from "@/modules/tareas/config";
+import { buildChecklist, countProgress, type ChecklistItem, type ChecklistTask } from "@/modules/tareas/lib/checklist";
+import { tareasApi, tareasRoutes } from "@/modules/tareas/module";
+
+type ChecklistEditorProps = {
+  company: { id: string; name: string };
+  closing: { id: string; name: string };
+  initialItems: ChecklistItem[];
+};
+
+type TextField = "name" | "notes";
+
+const TEXT_SAVE_DELAY_MS = 600;
+const jsonHeaders = { "Content-Type": "application/json" };
+
+type AutoTextareaProps = Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value"> & {
+  value: string;
+  singleLine?: boolean;
+};
+
+/** Textarea that grows with its content so long names and notes are always readable in full. */
+function AutoTextarea({ value, singleLine, onKeyDown, ...props }: AutoTextareaProps) {
+  const ref = useRef<HTMLTextAreaElement>(null);
+
+  useLayoutEffect(() => {
+    const element = ref.current;
+
+    if (element) {
+      element.style.height = "auto";
+      element.style.height = `${element.scrollHeight}px`;
+    }
+  }, [value]);
+
+  return (
+    <textarea
+      {...props}
+      onKeyDown={(event) => {
+        if (singleLine && event.key === "Enter") {
+          event.preventDefault();
+          event.currentTarget.blur();
+        }
+        onKeyDown?.(event);
+      }}
+      ref={ref}
+      rows={1}
+      value={value}
+    />
+  );
+}
+
+export function ChecklistEditor({ company, closing, initialItems }: ChecklistEditorProps) {
+  const router = useRouter();
+  const [items, setItems] = useState(initialItems);
+  const [closingName, setClosingName] = useState(closing.name);
+  const [pendingCount, setPendingCount] = useState(0);
+  const [scheduledCount, setScheduledCount] = useState(0);
+  const [hasSaved, setHasSaved] = useState(false);
+  const [saveError, setSaveError] = useState("");
+  const [focusId, setFocusId] = useState<string | null>(null);
+  const [isAdding, setIsAdding] = useState(false);
+
+  const queue = useRef<Promise<unknown>>(Promise.resolve());
+  const timers = useRef(new Map<string, { timeout: number; run: () => void }>());
+
+  const tasks = useMemo(() => buildChecklist(items), [items]);
+  const progress = countProgress(tasks);
+  const isSaving = pendingCount > 0 || scheduledCount > 0;
+
+  /** Runs API calls one after another, in the order the user made the changes. */
+  const enqueue = useCallback(<T,>(operation: () => Promise<T>): Promise<T | undefined> => {
+    setPendingCount((count) => count + 1);
+    const result = queue.current.then(operation);
+    queue.current = result.catch(() => undefined);
+
+    return result
+      .then((value) => {
+        setHasSaved(true);
+        return value;
+      })
+      .catch((error: unknown) => {
+        setSaveError(errorMessage(error, "No se pudo guardar el último cambio."));
+        return undefined;
+      })
+      .finally(() => setPendingCount((count) => count - 1));
+  }, []);
+
+  const patchItem = useCallback(
+    (itemId: string, values: Partial<Pick<ChecklistItem, "name" | "done" | "notes">>) =>
+      enqueue(() =>
+        fetchJson(
+          tareasApi.closingItem(closing.id, itemId),
+          { method: "PATCH", headers: jsonHeaders, body: JSON.stringify(values) },
+          "No se pudo guardar el cambio.",
+        ),
+      ),
+    [closing.id, enqueue],
+  );
+
+  const flushTimer = useCallback((key: string) => {
+    const timer = timers.current.get(key);
+
+    if (timer) {
+      window.clearTimeout(timer.timeout);
+      timers.current.delete(key);
+      setScheduledCount(timers.current.size);
+      timer.run();
+    }
+  }, []);
+
+  const cancelTimersFor = useCallback((itemIds: string[]) => {
+    for (const [key, timer] of timers.current) {
+      if (itemIds.some((id) => key.startsWith(`${id}:`))) {
+        window.clearTimeout(timer.timeout);
+        timers.current.delete(key);
+      }
+    }
+    setScheduledCount(timers.current.size);
+  }, []);
+
+  // Save pending text when leaving the page inside the app, and warn before closing the tab.
+  useEffect(() => {
+    const pendingTimers = timers.current;
+
+    function onBeforeUnload(event: BeforeUnloadEvent) {
+      if (pendingTimers.size > 0) {
+        event.preventDefault();
+      }
+    }
+
+    window.addEventListener("beforeunload", onBeforeUnload);
+
+    return () => {
+      window.removeEventListener("beforeunload", onBeforeUnload);
+      for (const key of [...pendingTimers.keys()]) {
+        const timer = pendingTimers.get(key);
+        window.clearTimeout(timer?.timeout);
+        pendingTimers.delete(key);
+        timer?.run();
+      }
+    };
+  }, []);
+
+  function editText(itemId: string, field: TextField, value: string) {
+    setItems((current) => current.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)));
+    const key = `${itemId}:${field}`;
+    const existing = timers.current.get(key);
+
+    if (existing) {
+      window.clearTimeout(existing.timeout);
+    }
+
+    const run = () => void patchItem(itemId, { [field]: value });
+    timers.current.set(key, { timeout: window.setTimeout(() => flushTimer(key), TEXT_SAVE_DELAY_MS), run });
+    setScheduledCount(timers.current.size);
+  }
+
+  function toggleDone(item: ChecklistItem) {
+    const done = !item.done;
+    setItems((current) => current.map((row) => (row.id === item.id ? { ...row, done } : row)));
+    void patchItem(item.id, { done });
+  }
+
+  async function addItem(parent: ChecklistTask | null) {
+    if (parent) {
+      // Queue the parent's pending text first: the server moves its notes to the first subtask.
+      flushTimer(`${parent.id}:name`);
+      flushTimer(`${parent.id}:notes`);
+    }
+
+    setIsAdding(true);
+    const created = await enqueue(() =>
+      fetchJson<ChecklistItem>(
+        tareasApi.closingItems(closing.id),
+        { method: "POST", headers: jsonHeaders, body: JSON.stringify({ parentId: parent?.id ?? null, name: "" }) },
+        "No se pudo añadir la fila.",
+      ),
+    );
+    setIsAdding(false);
+
+    if (!created) {
+      return;
+    }
+
+    setItems((current) => {
+      // Mirrors the server: when a task gets its first subtask, its notes move to that subtask.
+      const isFirstSubtask = parent && parent.subtasks.length === 0;
+      const updated = isFirstSubtask
+        ? current.map((item) => (item.id === parent.id ? { ...item, done: false, notes: "" } : item))
+        : current;
+      return [...updated, created];
+    });
+    setFocusId(created.id);
+  }
+
+  function removeItem(item: ChecklistItem, subtaskCount: number) {
+    const label = item.name.trim() ? `«${item.name.trim()}»` : "esta fila";
+    const extra = subtaskCount > 0 ? ` y sus ${subtaskCount} subtareas` : "";
+
+    if (!window.confirm(`¿Eliminar ${label}${extra}?`)) {
+      return;
+    }
+
+    const removedIds = [item.id, ...items.filter((row) => row.parentId === item.id).map((row) => row.id)];
+    cancelTimersFor(removedIds);
+    setItems((current) => current.filter((row) => !removedIds.includes(row.id)));
+    void enqueue(() =>
+      fetchJson(tareasApi.closingItem(closing.id, item.id), { method: "DELETE" }, "No se pudo eliminar la fila."),
+    );
+  }
+
+  function move(siblings: ChecklistItem[], index: number, direction: -1 | 1) {
+    const target = index + direction;
+
+    if (target < 0 || target >= siblings.length) {
+      return;
+    }
+
+    const ordered = [...siblings];
+    [ordered[index], ordered[target]] = [ordered[target], ordered[index]];
+    const positions = new Map(ordered.map((item, position) => [item.id, position]));
+    setItems((current) => current.map((item) => (positions.has(item.id) ? { ...item, position: positions.get(item.id)! } : item)));
+    void enqueue(() =>
+      fetchJson(
+        tareasApi.closingReorder(closing.id),
+        {
+          method: "POST",
+          headers: jsonHeaders,
+          body: JSON.stringify({ parentId: siblings[0].parentId, ids: ordered.map((item) => item.id) }),
+        },
+        "No se pudo cambiar el orden.",
+      ),
+    );
+  }
+
+  async function renameClosing(name: string) {
+    await fetchJson(
+      tareasApi.closing(closing.id),
+      { method: "PATCH", headers: jsonHeaders, body: JSON.stringify({ name }) },
+      "No se pudo cambiar el nombre.",
+    ).catch((error: unknown) => {
+      setSaveError(errorMessage(error, "No se pudo cambiar el nombre."));
+      throw error;
+    });
+    setClosingName(name);
+  }
+
+  async function deleteClosing() {
+    if (!window.confirm(`¿Eliminar el cierre «${closingName}» con todo su checklist? No se puede deshacer.`)) {
+      return;
+    }
+
+    try {
+      await fetchJson(tareasApi.closing(closing.id), { method: "DELETE" }, "No se pudo eliminar el cierre.");
+      router.push(tareasRoutes.company(company.id));
+      router.refresh();
+    } catch (error) {
+      setSaveError(errorMessage(error, "No se pudo eliminar el cierre."));
+    }
+  }
+
+  function nameField(item: ChecklistItem, placeholder: string, label: string) {
+    return (
+      <AutoTextarea
+        aria-label={label}
+        autoFocus={focusId === item.id}
+        className="tk-cell-input tk-cell-name"
+        maxLength={tareasConfig.limits.nameLength}
+        onBlur={() => flushTimer(`${item.id}:name`)}
+        onChange={(event) => editText(item.id, "name", event.target.value.replace(/\n/g, " "))}
+        placeholder={placeholder}
+        singleLine
+        value={item.name}
+      />
+    );
+  }
+
+  function rowCells(item: ChecklistItem, label: string) {
+    return (
+      <>
+        <td className="tk-col-done">
+          <input
+            aria-label={`Realizada: ${label}`}
+            checked={item.done}
+            className="tk-checkbox"
+            onChange={() => toggleDone(item)}
+            type="checkbox"
+          />
+        </td>
+        <td className="tk-col-notes">
+          <AutoTextarea
+            aria-label={`Observaciones: ${label}`}
+            className="tk-cell-input"
+            maxLength={tareasConfig.limits.notesLength}
+            onBlur={() => flushTimer(`${item.id}:notes`)}
+            onChange={(event) => editText(item.id, "notes", event.target.value)}
+            placeholder="—"
+            value={item.notes}
+          />
+        </td>
+      </>
+    );
+  }
+
+  function moveButtons(siblings: ChecklistItem[], index: number, label: string) {
+    return (
+      <>
+        <button aria-label={`Subir ${label}`} className="tk-row-button" disabled={index === 0} onClick={() => move(siblings, index, -1)} title="Subir" type="button">
+          <ArrowUp size={14} />
+        </button>
+        <button
+          aria-label={`Bajar ${label}`}
+          className="tk-row-button"
+          disabled={index === siblings.length - 1}
+          onClick={() => move(siblings, index, 1)}
+          title="Bajar"
+          type="button"
+        >
+          <ArrowDown size={14} />
+        </button>
+      </>
+    );
+  }
+
+  return (
+    <div className="grid">
+      <nav className="tk-breadcrumb" aria-label="Ruta">
+        <Link href={tareasRoutes.closings}>Empresas</Link>
+        <ChevronRight size={14} />
+        <Link href={tareasRoutes.company(company.id)}>{company.name}</Link>
+        <ChevronRight size={14} />
+        <span>{closingName}</span>
+      </nav>
+
+      <div className="tk-checklist-header">
+        <InlineNameEditor label="nombre del cierre" onSave={renameClosing} value={closingName}>
+          <h2 className="tk-section-title">{closingName}</h2>
+        </InlineNameEditor>
+        <div className="tk-checklist-meta">
+          <span className={`tk-save-status ${saveError ? "error" : ""}`} aria-live="polite">
+            {saveError ? (
+              <>
+                <CircleAlert size={14} /> Error al guardar
+              </>
+            ) : isSaving ? (
+              <>
+                <Loader2 className="spin" size={14} /> Guardando…
+              </>
+            ) : hasSaved ? (
+              <>
+                <Check size={14} /> Guardado
+              </>
+            ) : null}
+          </span>
+          <button className="button secondary tk-delete" onClick={deleteClosing} type="button">
+            <Trash2 size={16} />
+            Eliminar cierre
+          </button>
+        </div>
+      </div>
+
+      {saveError ? (
+        <div className="message error tk-save-error" role="alert">
+          <span>
+            {saveError} Los últimos cambios pueden no haberse guardado.
+          </span>
+          <button className="button secondary" onClick={() => window.location.reload()} type="button">
+            Recargar
+          </button>
+        </div>
+      ) : null}
+
+      <div className="tk-progress">
+        <strong>
+          {progress.done} de {progress.total} tareas realizadas
+        </strong>
+        <div
+          aria-label="Progreso"
+          aria-valuemax={progress.total}
+          aria-valuemin={0}
+          aria-valuenow={progress.done}
+          className="tk-progress-bar"
+          role="progressbar"
+        >
+          <span style={{ width: progress.total ? `${(progress.done / progress.total) * 100}%` : 0 }} />
+        </div>
+      </div>
+
+      <section className="panel tk-checklist-panel">
+        <div className="table-wrap">
+          <table className="tk-checklist">
+            <colgroup>
+              <col className="tk-col-task" />
+              <col className="tk-col-detail" />
+              <col className="tk-col-done" />
+              <col className="tk-col-notes" />
+            </colgroup>
+            <thead>
+              <tr>
+                <th>Tarea</th>
+                <th>Subtarea o detalle</th>
+                <th className="tk-col-done">Realizada</th>
+                <th>Observaciones</th>
+              </tr>
+            </thead>
+            {tasks.map((task, taskIndex) => {
+              const taskLabel = task.name.trim() || "tarea sin nombre";
+              const taskCell = (
+                <td className="tk-col-task" rowSpan={Math.max(1, task.subtasks.length)}>
+                  <div className="tk-cell">
+                    {nameField(task, "Nombre de la tarea", `Tarea ${taskIndex + 1}`)}
+                    <div className="tk-row-actions">
+                      {moveButtons(tasks, taskIndex, taskLabel)}
+                      <button
+                        aria-label={`Añadir subtarea a ${taskLabel}`}
+                        className="tk-row-button"
+                        disabled={isAdding}
+                        onClick={() => void addItem(task)}
+                        title="Añadir subtarea"
+                        type="button"
+                      >
+                        <ListPlus size={14} />
+                      </button>
+                      <button
+                        aria-label={`Eliminar ${taskLabel}`}
+                        className="tk-row-button danger"
+                        onClick={() => removeItem(task, task.subtasks.length)}
+                        title="Eliminar tarea"
+                        type="button"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  </div>
+                </td>
+              );
+
+              if (task.subtasks.length === 0) {
+                return (
+                  <tbody className="tk-group" key={task.id}>
+                    <tr className="tk-simple-row">
+                      {taskCell}
+                      <td className="tk-col-detail tk-no-detail" />
+                      {rowCells(task, taskLabel)}
+                    </tr>
+                  </tbody>
+                );
+              }
+
+              return (
+                <tbody className="tk-group" key={task.id}>
+                  {task.subtasks.map((subtask, subtaskIndex) => {
+                    const subtaskLabel = `${taskLabel} – ${subtask.name.trim() || "subtarea sin nombre"}`;
+
+                    return (
+                      <tr key={subtask.id}>
+                        {subtaskIndex === 0 ? taskCell : null}
+                        <td className="tk-col-detail">
+                          <div className="tk-cell">
+                            {nameField(subtask, "Subtarea o detalle", `Subtarea ${subtaskIndex + 1} de ${taskLabel}`)}
+                            <div className="tk-row-actions">
+                              {moveButtons(task.subtasks, subtaskIndex, subtaskLabel)}
+                              <button
+                                aria-label={`Eliminar ${subtaskLabel}`}
+                                className="tk-row-button danger"
+                                onClick={() => removeItem(subtask, 0)}
+                                title="Eliminar subtarea"
+                                type="button"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                        </td>
+                        {rowCells(subtask, subtaskLabel)}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              );
+            })}
+          </table>
+        </div>
+
+        {tasks.length === 0 ? (
+          <div className="panel-body">
+            <div className="message">El checklist está vacío. Añade la primera tarea.</div>
+          </div>
+        ) : null}
+
+        <div className="tk-checklist-footer">
+          <button className="button secondary" disabled={isAdding} onClick={() => void addItem(null)} type="button">
+            {isAdding ? <Loader2 className="spin" size={16} /> : <Plus size={16} />}
+            Añadir tarea
+          </button>
+          <span className="muted">Usa <ListPlus aria-hidden="true" size={13} /> para desglosar una tarea en subtareas.</span>
+        </div>
+      </section>
+    </div>
+  );
+}

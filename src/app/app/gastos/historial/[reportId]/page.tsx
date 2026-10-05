@@ -1,8 +1,4 @@
-import { redirect } from "next/navigation";
-
-import { AppShell } from "@/components/app-shell";
-import { ReportDetail } from "@/components/report-detail";
-import { getCurrentSession } from "@/lib/session";
+import { ReportDetail } from "@/modules/gastos/components/report-detail";
 
 type ReportPageProps = {
   params: Promise<{
@@ -11,17 +7,7 @@ type ReportPageProps = {
 };
 
 export default async function ExpensesHistoryDetailPage({ params }: ReportPageProps) {
-  const session = await getCurrentSession();
-
-  if (!session?.user) {
-    redirect("/login");
-  }
-
   const { reportId } = await params;
 
-  return (
-    <AppShell userEmail={session.user.email}>
-      <ReportDetail reportId={reportId} />
-    </AppShell>
-  );
+  return <ReportDetail reportId={reportId} />;
 }

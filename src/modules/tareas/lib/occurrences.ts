@@ -1,0 +1,131 @@
+import type { IsoDate } from "@/modules/tareas/lib/dates";
+import { occurrencesBetween, occursOn, type Recurrence } from "@/modules/tareas/lib/recurrence";
+
+/** A stored task. With `recurrence` it is a series that starts on `date`. */
+export type TaskRecord = {
+  id: string;
+  title: string;
+  notes: string;
+  color: string | null;
+  date: IsoDate;
+  until: IsoDate | null;
+  recurrence: Recurrence | null;
+  /** Only used by single (non-recurring) tasks; occurrences keep their state in exceptions. */
+  done: boolean;
+  createdAt: Date | string;
+};
+
+/** Per-occurrence state of a series, keyed by the date the occurrence originally falls on. */
+export type ExceptionRecord = {
+  taskId: string;
+  occurrenceDate: IsoDate;
+  done: boolean;
+  deleted: boolean;
+  /** When true, title/notes/color/date replace the series values for this occurrence. */
+  edited: boolean;
+  title: string | null;
+  notes: string | null;
+  color: string | null;
+  date: IsoDate | null;
+};
+
+export type Occurrence = {
+  taskId: string;
+  /** Original date in the series (equals `date` for single tasks). Identifies the occurrence. */
+  occurrenceDate: IsoDate;
+  /** Day it is shown on. */
+  date: IsoDate;
+  title: string;
+  notes: string;
+  color: string | null;
+  done: boolean;
+  recurrence: Recurrence | null;
+  seriesStart: IsoDate;
+  until: IsoDate | null;
+};
+
+export function exceptionKey(taskId: string, occurrenceDate: IsoDate) {
+  return `${taskId}:${occurrenceDate}`;
+}
+
+function toOccurrence(task: TaskRecord, occurrenceDate: IsoDate, exception?: ExceptionRecord): Occurrence {
+  const edited = exception?.edited === true;
+
+  return {
+    taskId: task.id,
+    occurrenceDate,
+    date: edited && exception.date ? exception.date : occurrenceDate,
+    title: edited && exception.title !== null ? exception.title : task.title,
+    notes: edited && exception.notes !== null ? exception.notes : task.notes,
+    color: edited ? exception.color : task.color,
+    done: task.recurrence ? (exception?.done ?? false) : task.done,
+    recurrence: task.recurrence,
+    seriesStart: task.date,
+    until: task.until,
+  };
+}
+
+/**
+ * Every occurrence shown between `from` and `to` (inclusive): single tasks, series occurrences
+ * (minus deleted ones) and occurrences moved into the range from another day.
+ */
+export function expandOccurrences(
+  tasks: TaskRecord[],
+  exceptions: ExceptionRecord[],
+  from: IsoDate,
+  to: IsoDate,
+): Occurrence[] {
+  const exceptionsByKey = new Map(exceptions.map((item) => [exceptionKey(item.taskId, item.occurrenceDate), item]));
+  const result: { occurrence: Occurrence; order: number }[] = [];
+
+  for (const task of tasks) {
+    const order = new Date(task.createdAt).getTime();
+
+    if (!task.recurrence) {
+      if (task.date >= from && task.date <= to) {
+        result.push({ occurrence: toOccurrence(task, task.date), order });
+      }
+      continue;
+    }
+
+    const rule = { start: task.date, until: task.until, recurrence: task.recurrence };
+    const seen = new Set<IsoDate>();
+
+    for (const occurrenceDate of occurrencesBetween(rule, from, to)) {
+      seen.add(occurrenceDate);
+      const exception = exceptionsByKey.get(exceptionKey(task.id, occurrenceDate));
+
+      if (exception?.deleted) {
+        continue;
+      }
+
+      const occurrence = toOccurrence(task, occurrenceDate, exception);
+
+      if (occurrence.date >= from && occurrence.date <= to) {
+        result.push({ occurrence, order });
+      }
+    }
+
+    // Occurrences whose original date is outside the range but were moved into it.
+    for (const exception of exceptions) {
+      if (
+        exception.taskId !== task.id ||
+        exception.deleted ||
+        !exception.edited ||
+        !exception.date ||
+        exception.date < from ||
+        exception.date > to ||
+        seen.has(exception.occurrenceDate) ||
+        !occursOn(rule, exception.occurrenceDate)
+      ) {
+        continue;
+      }
+
+      result.push({ occurrence: toOccurrence(task, exception.occurrenceDate, exception), order });
+    }
+  }
+
+  return result
+    .sort((a, b) => a.occurrence.date.localeCompare(b.occurrence.date) || a.order - b.order)
+    .map((item) => item.occurrence);
+}
