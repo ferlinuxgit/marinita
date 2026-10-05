@@ -8,6 +8,8 @@ import { tareasConfig } from "@/modules/tareas/config";
 import { diffDays } from "@/modules/tareas/lib/dates";
 import {
   closingCreateSchema,
+  dataEntryCreateSchema,
+  dataEntryUpdateSchema,
   dayOrderSchema,
   editScopeSchema,
   isoDateSchema,
@@ -18,6 +20,9 @@ import {
   taskDoneSchema,
   taskInputSchema,
   taskUpdateSchema,
+  todoCreateSchema,
+  todoReorderSchema,
+  todoUpdateSchema,
 } from "@/modules/tareas/lib/validation";
 import {
   addItem,
@@ -41,6 +46,14 @@ import {
   setTaskDone,
   updateTask,
 } from "@/modules/tareas/server/tasks-repository";
+import {
+  createDataEntry,
+  deleteDataEntry,
+  getDataEntry,
+  listDataEntries,
+  updateDataEntry,
+} from "@/modules/tareas/server/data-repository";
+import { addTodo, deleteTodo, listTodos, reorderTodos, updateTodo } from "@/modules/tareas/server/todos-repository";
 
 async function readJson(request: Request) {
   try {
@@ -160,5 +173,57 @@ export const deleteItemHandler = withUser<{ closingId: string; itemId: string }>
 export const reorderItemsHandler = withUser<{ closingId: string }>(async ({ request, user, params }) => {
   const { parentId, ids } = reorderSchema.parse(await readJson(request));
   await reorderItems(user.id, params.closingId, parentId, ids);
+  return ok();
+});
+
+// --- Undated to-do list ----------------------------------------------------------------------
+
+export const listTodosHandler = withUser(async ({ user }) => {
+  return NextResponse.json({ todos: await listTodos(user.id) });
+});
+
+export const addTodoHandler = withUser(async ({ request, user }) => {
+  const { title } = todoCreateSchema.parse(await readJson(request));
+  return NextResponse.json(await addTodo(user.id, title), { status: 201 });
+});
+
+export const updateTodoHandler = withUser<{ todoId: string }>(async ({ request, user, params }) => {
+  await updateTodo(user.id, params.todoId, todoUpdateSchema.parse(await readJson(request)));
+  return ok();
+});
+
+export const deleteTodoHandler = withUser<{ todoId: string }>(async ({ user, params }) => {
+  await deleteTodo(user.id, params.todoId);
+  return ok();
+});
+
+export const reorderTodosHandler = withUser(async ({ request, user }) => {
+  const { ids } = todoReorderSchema.parse(await readJson(request));
+  await reorderTodos(user.id, ids);
+  return ok();
+});
+
+// --- Data sheets -----------------------------------------------------------------------------
+
+export const listDataHandler = withUser(async ({ user }) => {
+  return NextResponse.json({ entries: await listDataEntries(user.id) });
+});
+
+export const createDataHandler = withUser(async ({ request, user }) => {
+  const { title, description } = dataEntryCreateSchema.parse(await readJson(request));
+  return NextResponse.json(await createDataEntry(user.id, title, description), { status: 201 });
+});
+
+export const getDataHandler = withUser<{ entryId: string }>(async ({ user, params }) => {
+  return NextResponse.json(await getDataEntry(user.id, params.entryId));
+});
+
+export const updateDataHandler = withUser<{ entryId: string }>(async ({ request, user, params }) => {
+  await updateDataEntry(user.id, params.entryId, dataEntryUpdateSchema.parse(await readJson(request)));
+  return ok();
+});
+
+export const deleteDataHandler = withUser<{ entryId: string }>(async ({ user, params }) => {
+  await deleteDataEntry(user.id, params.entryId);
   return ok();
 });

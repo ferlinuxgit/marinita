@@ -4,15 +4,15 @@ Aplicacion Next.js de herramientas internas, organizada en modulos independiente
 
 - **Gastos** (`/app/gastos`): analiza exports de Payhawk en Excel, guarda un historial y exporta el resumen y los asientos contables.
 - **Facturas** (`/app/facturas`): lee facturas BP en PDF y prepara una linea por centro de coste.
-- **Tareas y cierres** (`/app/tareas`): calendario de tareas (semana, dos semanas, mes) con colores y repeticiones, y checklists de cierre por empresa (`/app/tareas/cierres`).
+- **Agenda** (`/app/tareas`): calendario de tareas (semana, dos semanas, mes; de lunes a viernes) con colores, repeticiones y orden manual por dia; lista de tareas sin fecha (`/app/tareas/lista`); checklists de cierre por empresa (`/app/tareas/cierres`); y fichas de datos de consulta con texto y tablas (`/app/tareas/datos`).
 
-### Tareas y cierres
+### Agenda
 
 - Las fechas de las tareas se guardan como dias de calendario (`date`, sin hora), asi que no cambian con la zona horaria del navegador. El dia actual se calcula con la zona horaria de `src/modules/tareas/config.ts` (`Europe/Madrid`).
 - Una tarea repetida es una serie; el estado de cada aparicion (realizada, eliminada o editada) se guarda aparte, por lo que completar una no afecta a las demas. "Esta y las siguientes" cierra la serie original el dia anterior y crea otra nueva, conservando el historial.
 - Repeticion mensual en dia 29, 30 o 31: en los meses sin ese dia se usa el ultimo dia del mes.
 - Las empresas, los cierres y las tareas pertenecen al usuario que los crea, igual que los informes de gastos.
-- Los checklists se guardan automaticamente. Copiar un cierre copia la estructura (tareas, subtareas y orden) sin marcas ni observaciones.
+- Los checklists, la lista de tareas y las fichas de datos se guardan automaticamente. Copiar un cierre copia la estructura (tareas, subtareas y orden) sin marcas ni observaciones.
 
 ## Stack
 

@@ -15,6 +15,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 import { user } from "../../../core/db/auth-schema";
+import type { DataBlock } from "../lib/data-blocks";
 import type { Recurrence } from "../lib/recurrence";
 
 // Calendar dates use `date` columns in string mode ("YYYY-MM-DD"): no time zone conversions.
@@ -114,6 +115,39 @@ export const tareasClosingItems = pgTable(
     notes: text("notes").notNull().default(""),
   },
   (table) => [index("tareas_closing_items_closing_idx").on(table.closingId)],
+);
+
+/** Undated to-do list ("Tareas" section). */
+export const tareasTodos = pgTable(
+  "tareas_todos",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull().default(""),
+    done: boolean("done").notNull().default(false),
+    position: integer("position").notNull(),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [index("tareas_todos_user_idx").on(table.userId)],
+);
+
+/** Reference sheets ("Datos" section): a title, a short description and free content blocks. */
+export const tareasDataEntries = pgTable(
+  "tareas_data_entries",
+  {
+    id: text("id").primaryKey(),
+    userId: text("userId")
+      .notNull()
+      .references(() => user.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description").notNull().default(""),
+    blocks: jsonb("blocks").$type<DataBlock[]>().notNull().default([]),
+    createdAt: timestamp("createdAt", { mode: "date" }).notNull().defaultNow(),
+    updatedAt: timestamp("updatedAt", { mode: "date" }).notNull().defaultNow(),
+  },
+  (table) => [index("tareas_data_entries_user_idx").on(table.userId)],
 );
 
 export const tareasTasksRelations = relations(tareasTasks, ({ many }) => ({

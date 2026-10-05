@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { tareasConfig } from "@/modules/tareas/config";
+import { dataBlocksSchema } from "@/modules/tareas/lib/data-blocks";
 import { isIsoDate } from "@/modules/tareas/lib/dates";
 
 const { limits } = tareasConfig;
@@ -81,4 +82,28 @@ export const dayOrderSchema = z.object({
   keys: z
     .array(z.string().regex(/^[^:]+:\d{4}-\d{2}-\d{2}$/))
     .max(500),
+});
+
+export const todoCreateSchema = z.object({
+  title: z.string().max(limits.titleLength).default(""),
+});
+
+export const todoUpdateSchema = z
+  .object({
+    title: z.string().max(limits.titleLength),
+    done: z.boolean(),
+  })
+  .partial();
+
+export const todoReorderSchema = z.object({
+  ids: z.array(z.string().min(1)).max(2000),
+});
+
+export const dataEntryCreateSchema = z.object({
+  title: z.string().trim().min(1, "El título es obligatorio.").max(limits.nameLength),
+  description: z.string().max(limits.notesLength).default(""),
+});
+
+export const dataEntryUpdateSchema = dataEntryCreateSchema.extend({
+  blocks: dataBlocksSchema,
 });

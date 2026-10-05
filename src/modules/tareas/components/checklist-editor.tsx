@@ -1,12 +1,15 @@
 "use client";
 
-import { ArrowDown, ArrowUp, Check, ChevronRight, CircleAlert, ListPlus, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ListPlus, Loader2, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 
 import { errorMessage, fetchJson } from "@/core/ui/api-client";
+import { AutoTextarea } from "@/modules/tareas/components/auto-textarea";
 import { InlineNameEditor } from "@/modules/tareas/components/inline-name-editor";
+import { SaveErrorBanner, SaveStatus } from "@/modules/tareas/components/save-status";
+import { useSaveQueue } from "@/modules/tareas/components/use-save-queue";
 import { tareasConfig } from "@/modules/tareas/config";
 import { buildChecklist, countProgress, type ChecklistItem, type ChecklistTask } from "@/modules/tareas/lib/checklist";
 import { tareasApi, tareasRoutes } from "@/modules/tareas/module";
@@ -19,79 +22,18 @@ type ChecklistEditorProps = {
 
 type TextField = "name" | "notes";
 
-const TEXT_SAVE_DELAY_MS = 600;
 const jsonHeaders = { "Content-Type": "application/json" };
-
-type AutoTextareaProps = Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "value"> & {
-  value: string;
-  singleLine?: boolean;
-};
-
-/** Textarea that grows with its content so long names and notes are always readable in full. */
-function AutoTextarea({ value, singleLine, onKeyDown, ...props }: AutoTextareaProps) {
-  const ref = useRef<HTMLTextAreaElement>(null);
-
-  useLayoutEffect(() => {
-    const element = ref.current;
-
-    if (element) {
-      element.style.height = "auto";
-      element.style.height = `${element.scrollHeight}px`;
-    }
-  }, [value]);
-
-  return (
-    <textarea
-      {...props}
-      onKeyDown={(event) => {
-        if (singleLine && event.key === "Enter") {
-          event.preventDefault();
-          event.currentTarget.blur();
-        }
-        onKeyDown?.(event);
-      }}
-      ref={ref}
-      rows={1}
-      value={value}
-    />
-  );
-}
 
 export function ChecklistEditor({ company, closing, initialItems }: ChecklistEditorProps) {
   const router = useRouter();
   const [items, setItems] = useState(initialItems);
   const [closingName, setClosingName] = useState(closing.name);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [scheduledCount, setScheduledCount] = useState(0);
-  const [hasSaved, setHasSaved] = useState(false);
-  const [saveError, setSaveError] = useState("");
+  const { enqueue, schedule, flush: flushTimer, cancel, isSaving, hasSaved, error: saveError, setError: setSaveError } = useSaveQueue();
   const [focusId, setFocusId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
 
-  const queue = useRef<Promise<unknown>>(Promise.resolve());
-  const timers = useRef(new Map<string, { timeout: number; run: () => void }>());
-
   const tasks = useMemo(() => buildChecklist(items), [items]);
   const progress = countProgress(tasks);
-  const isSaving = pendingCount > 0 || scheduledCount > 0;
-
-  /** Runs API calls one after another, in the order the user made the changes. */
-  const enqueue = useCallback(<T,>(operation: () => Promise<T>): Promise<T | undefined> => {
-    setPendingCount((count) => count + 1);
-    const result = queue.current.then(operation);
-    queue.current = result.catch(() => undefined);
-
-    return result
-      .then((value) => {
-        setHasSaved(true);
-        return value;
-      })
-      .catch((error: unknown) => {
-        setSaveError(errorMessage(error, "No se pudo guardar el último cambio."));
-        return undefined;
-      })
-      .finally(() => setPendingCount((count) => count - 1));
-  }, []);
 
   const patchItem = useCallback(
     (itemId: string, values: Partial<Pick<ChecklistItem, "name" | "done" | "notes">>) =>
@@ -105,62 +47,9 @@ export function ChecklistEditor({ company, closing, initialItems }: ChecklistEdi
     [closing.id, enqueue],
   );
 
-  const flushTimer = useCallback((key: string) => {
-    const timer = timers.current.get(key);
-
-    if (timer) {
-      window.clearTimeout(timer.timeout);
-      timers.current.delete(key);
-      setScheduledCount(timers.current.size);
-      timer.run();
-    }
-  }, []);
-
-  const cancelTimersFor = useCallback((itemIds: string[]) => {
-    for (const [key, timer] of timers.current) {
-      if (itemIds.some((id) => key.startsWith(`${id}:`))) {
-        window.clearTimeout(timer.timeout);
-        timers.current.delete(key);
-      }
-    }
-    setScheduledCount(timers.current.size);
-  }, []);
-
-  // Save pending text when leaving the page inside the app, and warn before closing the tab.
-  useEffect(() => {
-    const pendingTimers = timers.current;
-
-    function onBeforeUnload(event: BeforeUnloadEvent) {
-      if (pendingTimers.size > 0) {
-        event.preventDefault();
-      }
-    }
-
-    window.addEventListener("beforeunload", onBeforeUnload);
-
-    return () => {
-      window.removeEventListener("beforeunload", onBeforeUnload);
-      for (const key of [...pendingTimers.keys()]) {
-        const timer = pendingTimers.get(key);
-        window.clearTimeout(timer?.timeout);
-        pendingTimers.delete(key);
-        timer?.run();
-      }
-    };
-  }, []);
-
   function editText(itemId: string, field: TextField, value: string) {
     setItems((current) => current.map((item) => (item.id === itemId ? { ...item, [field]: value } : item)));
-    const key = `${itemId}:${field}`;
-    const existing = timers.current.get(key);
-
-    if (existing) {
-      window.clearTimeout(existing.timeout);
-    }
-
-    const run = () => void patchItem(itemId, { [field]: value });
-    timers.current.set(key, { timeout: window.setTimeout(() => flushTimer(key), TEXT_SAVE_DELAY_MS), run });
-    setScheduledCount(timers.current.size);
+    schedule(`${itemId}:${field}`, () => void patchItem(itemId, { [field]: value }));
   }
 
   function toggleDone(item: ChecklistItem) {
@@ -210,7 +99,7 @@ export function ChecklistEditor({ company, closing, initialItems }: ChecklistEdi
     }
 
     const removedIds = [item.id, ...items.filter((row) => row.parentId === item.id).map((row) => row.id)];
-    cancelTimersFor(removedIds);
+    cancel(removedIds.map((id) => `${id}:`));
     setItems((current) => current.filter((row) => !removedIds.includes(row.id)));
     void enqueue(() =>
       fetchJson(tareasApi.closingItem(closing.id, item.id), { method: "DELETE" }, "No se pudo eliminar la fila."),
@@ -345,21 +234,7 @@ export function ChecklistEditor({ company, closing, initialItems }: ChecklistEdi
           <h2 className="tk-section-title">{closingName}</h2>
         </InlineNameEditor>
         <div className="tk-checklist-meta">
-          <span className={`tk-save-status ${saveError ? "error" : ""}`} aria-live="polite">
-            {saveError ? (
-              <>
-                <CircleAlert size={14} /> Error al guardar
-              </>
-            ) : isSaving ? (
-              <>
-                <Loader2 className="spin" size={14} /> Guardando…
-              </>
-            ) : hasSaved ? (
-              <>
-                <Check size={14} /> Guardado
-              </>
-            ) : null}
-          </span>
+          <SaveStatus error={saveError} hasSaved={hasSaved} isSaving={isSaving} />
           <button className="button secondary tk-delete" onClick={deleteClosing} type="button">
             <Trash2 size={16} />
             Eliminar cierre
@@ -367,16 +242,7 @@ export function ChecklistEditor({ company, closing, initialItems }: ChecklistEdi
         </div>
       </div>
 
-      {saveError ? (
-        <div className="message error tk-save-error" role="alert">
-          <span>
-            {saveError} Los últimos cambios pueden no haberse guardado.
-          </span>
-          <button className="button secondary" onClick={() => window.location.reload()} type="button">
-            Recargar
-          </button>
-        </div>
-      ) : null}
+      <SaveErrorBanner error={saveError} />
 
       <div className="tk-progress">
         <strong>
