@@ -8,7 +8,13 @@ import { Modal } from "@/core/ui/modal";
 import { tareasConfig } from "@/modules/tareas/config";
 import { dateParts, formatDate, WEEKDAY_NAMES, WEEKDAY_SHORT, weekday, type IsoDate } from "@/modules/tareas/lib/dates";
 import type { Occurrence } from "@/modules/tareas/lib/occurrences";
-import { describeRecurrence, normalizeRecurrence, type Recurrence, type RecurrenceFrequency } from "@/modules/tareas/lib/recurrence";
+import {
+  describeRecurrence,
+  normalizeRecurrence,
+  supportsWeekendShift,
+  type Recurrence,
+  type RecurrenceFrequency,
+} from "@/modules/tareas/lib/recurrence";
 import type { EditScope } from "@/modules/tareas/lib/validation";
 import { tareasApi } from "@/modules/tareas/module";
 
@@ -26,6 +32,7 @@ type FormState = {
   unit: RecurrenceFrequency;
   weekdays: number[];
   monthDay: number;
+  weekendShift: boolean;
   until: string;
 };
 
@@ -49,6 +56,7 @@ function initialForm(target: TaskDialogTarget): FormState {
       unit: "weekly",
       weekdays: [weekday(target.date)],
       monthDay: dateParts(target.date).day,
+      weekendShift: true,
       until: "",
     };
   }
@@ -67,6 +75,7 @@ function initialForm(target: TaskDialogTarget): FormState {
     unit: recurrence?.freq ?? "weekly",
     weekdays: recurrence?.weekdays.length ? recurrence.weekdays : [weekday(occurrence.date)],
     monthDay: recurrence?.monthDay ?? dateParts(occurrence.date).day,
+    weekendShift: recurrence ? Boolean(recurrence.weekendShift) : true,
     until: occurrence.until ?? "",
   };
 }
@@ -78,7 +87,10 @@ function toRecurrence(form: FormState): Recurrence | null {
 
   const freq = form.repeat === "custom" ? form.unit : form.repeat;
   const interval = form.repeat === "custom" ? form.interval : 1;
-  return normalizeRecurrence({ freq, interval, weekdays: form.weekdays, monthDay: form.monthDay }, form.date);
+  return normalizeRecurrence(
+    { freq, interval, weekdays: form.weekdays, monthDay: form.monthDay, weekendShift: form.weekendShift },
+    form.date,
+  );
 }
 
 function repetitionKey(form: FormState) {
@@ -444,6 +456,17 @@ export function TaskDialog({ target, onClose, onChanged }: TaskDialogProps) {
                   Si un mes no tiene ese día (29, 30 o 31), la tarea aparece el último día de ese mes.
                 </small>
               </div>
+            ) : null}
+
+            {recurrence && supportsWeekendShift(recurrence) ? (
+              <label className="tk-check-label tk-weekend-shift">
+                <input
+                  checked={form.weekendShift}
+                  onChange={(event) => update("weekendShift", event.target.checked)}
+                  type="checkbox"
+                />
+                Si cae en sábado o domingo, pasarla al lunes siguiente
+              </label>
             ) : null}
 
             <div className="tk-inline-field">

@@ -1382,3 +1382,20 @@ table.tk-data-table {
     display: none;
   }
 }
+
+.tk-weekend-shift {
+  color: var(--foreground);
+  white-space: normal;
+}
+
+.tk-filter {
+  min-height: 34px;
+  margin-left: auto;
+  font-size: 14px;
+}
+
+.tk-filter.active {
+  border-color: var(--primary);
+  color: white;
+  background: var(--primary);
+}

@@ -9,7 +9,7 @@ import { NotFoundError, UserFacingError } from "@/core/http/errors";
 import { tareasDayOrders, tareasTaskExceptions, tareasTasks } from "@/modules/tareas/db/schema";
 import { addDays, diffDays, type IsoDate } from "@/modules/tareas/lib/dates";
 import { applyDayOrders, expandOccurrences, type TaskRecord } from "@/modules/tareas/lib/occurrences";
-import { normalizeRecurrence, occursOn } from "@/modules/tareas/lib/recurrence";
+import { displayDate, normalizeRecurrence, occursOn } from "@/modules/tareas/lib/recurrence";
 import type { EditScope, TaskInput } from "@/modules/tareas/lib/validation";
 
 type Transaction = Parameters<Parameters<typeof db.transaction>[0]>[0];
@@ -110,7 +110,7 @@ export async function listOccurrences(userId: string, from: IsoDate, to: IsoDate
               series.map((task) => task.id),
             ),
             or(
-              between(tareasTaskExceptions.occurrenceDate, from, to),
+              between(tareasTaskExceptions.occurrenceDate, addDays(from, -2), to),
               and(eq(tareasTaskExceptions.edited, true), between(tareasTaskExceptions.date, from, to)),
             ),
           ),
@@ -177,7 +177,7 @@ export async function updateTask(
       .select({ edited: tareasTaskExceptions.edited, date: tareasTaskExceptions.date })
       .from(tareasTaskExceptions)
       .where(and(eq(tareasTaskExceptions.taskId, task.id), eq(tareasTaskExceptions.occurrenceDate, occurrence)));
-    const shownDate = exception?.edited && exception.date ? exception.date : occurrence;
+    const shownDate = exception?.edited && exception.date ? exception.date : displayDate(task.recurrence, occurrence);
     const shift = diffDays(shownDate, input.date);
 
     if (scope === "all" || occurrence === task.date) {

@@ -131,6 +131,17 @@ describe("normalizeRecurrence / describeRecurrence", () => {
     expect(normalizeRecurrence({ freq: "monthly", interval: 1, weekdays: [], monthDay: null }, "2026-10-08").monthDay).toBe(8);
   });
 
+  it("only keeps the weekend shift for monthly and every-N-days series", () => {
+    const base = { interval: 1, weekdays: [], monthDay: null, weekendShift: true };
+    expect(normalizeRecurrence({ ...base, freq: "monthly" }, "2026-10-05").weekendShift).toBe(true);
+    expect(normalizeRecurrence({ ...base, freq: "daily", interval: 3 }, "2026-10-05").weekendShift).toBe(true);
+    expect(normalizeRecurrence({ ...base, freq: "daily" }, "2026-10-05").weekendShift).toBe(false);
+    expect(normalizeRecurrence({ ...base, freq: "weekly" }, "2026-10-05").weekendShift).toBeUndefined();
+    expect(describeRecurrence(normalizeRecurrence({ ...base, freq: "monthly", monthDay: 5 }, "2026-10-05"))).toBe(
+      "El día 5 de cada mes (si cae en fin de semana, el lunes siguiente)",
+    );
+  });
+
   it("describes in Spanish", () => {
     const describe = (recurrence: Partial<Recurrence> & Pick<Recurrence, "freq">) =>
       describeRecurrence(normalizeRecurrence({ interval: 1, weekdays: [], monthDay: null, ...recurrence }, "2026-10-05"));

@@ -1,5 +1,5 @@
-import type { IsoDate } from "@/modules/tareas/lib/dates";
-import { occurrencesBetween, occursOn, type Recurrence } from "@/modules/tareas/lib/recurrence";
+import { addDays, type IsoDate } from "@/modules/tareas/lib/dates";
+import { displayDate, occurrencesBetween, occursOn, type Recurrence } from "@/modules/tareas/lib/recurrence";
 
 /** A stored task. With `recurrence` it is a series that starts on `date`. */
 export type TaskRecord = {
@@ -54,7 +54,7 @@ function toOccurrence(task: TaskRecord, occurrenceDate: IsoDate, exception?: Exc
   return {
     taskId: task.id,
     occurrenceDate,
-    date: edited && exception.date ? exception.date : occurrenceDate,
+    date: edited && exception.date ? exception.date : displayDate(task.recurrence, occurrenceDate),
     title: edited && exception.title !== null ? exception.title : task.title,
     notes: edited && exception.notes !== null ? exception.notes : task.notes,
     color: edited ? exception.color : task.color,
@@ -91,7 +91,8 @@ export function expandOccurrences(
     const rule = { start: task.date, until: task.until, recurrence: task.recurrence };
     const seen = new Set<IsoDate>();
 
-    for (const occurrenceDate of occurrencesBetween(rule, from, to)) {
+    // Two extra days: a Saturday or Sunday occurrence may be shown on the Monday at `from`.
+    for (const occurrenceDate of occurrencesBetween(rule, addDays(from, -2), to)) {
       seen.add(occurrenceDate);
       const exception = exceptionsByKey.get(exceptionKey(task.id, occurrenceDate));
 

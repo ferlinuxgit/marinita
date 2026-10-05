@@ -19,6 +19,7 @@ export const recurrenceSchema = z.object({
   interval: z.number().int().min(1).max(limits.interval),
   weekdays: z.array(z.number().int().min(0).max(6)).max(7),
   monthDay: z.number().int().min(1).max(31).nullable(),
+  weekendShift: z.boolean().default(false),
 });
 
 export const taskInputSchema = z

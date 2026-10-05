@@ -85,6 +85,37 @@ describe("expandOccurrences", () => {
   });
 });
 
+describe("weekend shift", () => {
+  // 5th of each month, moved to Monday when it falls on a weekend.
+  const monthly: TaskRecord = {
+    ...weeklyMonday,
+    id: "m",
+    title: "IVA",
+    date: "2026-09-05",
+    recurrence: { freq: "monthly", interval: 1, weekdays: [], monthDay: 5, weekendShift: true },
+  };
+
+  it("shows weekend occurrences on the following Monday, also at the start of the range", () => {
+    // 5 Sep 2026 is a Saturday → Monday 7; 5 Oct is a Monday; 5 Dec is a Saturday → Monday 7.
+    const september = expandOccurrences([monthly], [], "2026-09-07", "2026-09-11");
+    expect(september.map((item) => [item.occurrenceDate, item.date])).toEqual([["2026-09-05", "2026-09-07"]]);
+    expect(expandOccurrences([monthly], [], "2026-10-01", "2026-10-31").map((item) => item.date)).toEqual(["2026-10-05"]);
+    expect(expandOccurrences([monthly], [], "2026-12-01", "2026-12-31").map((item) => item.date)).toEqual(["2026-12-07"]);
+    // Nothing is shown on the weekend itself.
+    expect(expandOccurrences([monthly], [], "2026-09-05", "2026-09-06")).toEqual([]);
+  });
+
+  it("keeps the state of a moved occurrence on its original date", () => {
+    const done = { taskId: "m", occurrenceDate: "2026-09-05", done: true, deleted: false, edited: false, title: null, notes: null, color: null, date: null };
+    expect(expandOccurrences([monthly], [done], "2026-09-07", "2026-09-07")[0].done).toBe(true);
+  });
+
+  it("does nothing when the option is off", () => {
+    const plain = { ...monthly, recurrence: { ...monthly.recurrence!, weekendShift: false } };
+    expect(expandOccurrences([plain], [], "2026-09-01", "2026-09-30").map((item) => item.date)).toEqual(["2026-09-05"]);
+  });
+});
+
 describe("day order", () => {
   const task = (id: string, date: string, createdAt: string): TaskRecord => ({
     ...weeklyMonday,

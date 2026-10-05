@@ -1,4 +1,5 @@
 import {
+  addDays,
   dateParts,
   daysInMonth,
   diffDays,
@@ -20,7 +21,27 @@ export type Recurrence = {
   weekdays: number[];
   /** Monthly only: 1–31. Months without that day use their last day. */
   monthDay: number | null;
+  /**
+   * Show occurrences that fall on Saturday or Sunday on the following Monday. Only for monthly
+   * series and "every N days"; weekly series pick their weekdays explicitly. Missing in older rows.
+   */
+  weekendShift?: boolean;
 };
+
+/** Whether the "move to Monday" option applies to this kind of repetition. */
+export function supportsWeekendShift(recurrence: Pick<Recurrence, "freq" | "interval">) {
+  return recurrence.freq === "monthly" || (recurrence.freq === "daily" && recurrence.interval > 1);
+}
+
+/** Day an occurrence is shown on: its own date, or the next Monday if it falls on a weekend. */
+export function displayDate(recurrence: Recurrence | null, occurrenceDate: IsoDate) {
+  if (!recurrence?.weekendShift || !supportsWeekendShift(recurrence)) {
+    return occurrenceDate;
+  }
+
+  const day = weekday(occurrenceDate);
+  return day >= 5 ? addDays(occurrenceDate, 7 - day) : occurrenceDate;
+}
 
 export type SeriesRule = {
   start: IsoDate;
@@ -31,6 +52,7 @@ export type SeriesRule = {
 /** Fills the fields a frequency needs from the start date and drops the ones it does not use. */
 export function normalizeRecurrence(recurrence: Recurrence, start: IsoDate): Recurrence {
   const interval = Math.max(1, Math.trunc(recurrence.interval) || 1);
+  const weekendShift = Boolean(recurrence.weekendShift) && supportsWeekendShift({ freq: recurrence.freq, interval });
 
   if (recurrence.freq === "weekly") {
     const weekdays = [...new Set(recurrence.weekdays.filter((day) => day >= 0 && day <= 6))].sort();
@@ -41,10 +63,10 @@ export function normalizeRecurrence(recurrence: Recurrence, start: IsoDate): Rec
     const monthDay = recurrence.monthDay && recurrence.monthDay >= 1 && recurrence.monthDay <= 31
       ? Math.trunc(recurrence.monthDay)
       : dateParts(start).day;
-    return { freq: "monthly", interval, weekdays: [], monthDay };
+    return { freq: "monthly", interval, weekdays: [], monthDay, weekendShift };
   }
 
-  return { freq: "daily", interval, weekdays: [], monthDay: null };
+  return { freq: "daily", interval, weekdays: [], monthDay: null, weekendShift };
 }
 
 export function occursOn({ start, until, recurrence }: SeriesRule, date: IsoDate) {
@@ -93,6 +115,13 @@ function joinSpanish(items: string[]) {
 }
 
 export function describeRecurrence(recurrence: Recurrence) {
+  const base = describeBase(recurrence);
+  return recurrence.weekendShift && supportsWeekendShift(recurrence)
+    ? `${base} (si cae en fin de semana, el lunes siguiente)`
+    : base;
+}
+
+function describeBase(recurrence: Recurrence) {
   const { interval } = recurrence;
 
   switch (recurrence.freq) {

@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronRight, ListPlus, Loader2, Plus, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, ChevronRight, ListFilter, ListPlus, Loader2, Plus, Trash2 } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
@@ -31,9 +31,21 @@ export function ChecklistEditor({ company, closing, initialItems }: ChecklistEdi
   const { enqueue, schedule, flush: flushTimer, cancel, isSaving, hasSaved, error: saveError, setError: setSaveError } = useSaveQueue();
   const [focusId, setFocusId] = useState<string | null>(null);
   const [isAdding, setIsAdding] = useState(false);
+  const [onlyPending, setOnlyPending] = useState(false);
 
   const tasks = useMemo(() => buildChecklist(items), [items]);
   const progress = countProgress(tasks);
+  // "Solo pendientes": hide ticked rows; a grouping stays while it has pending subtasks.
+  const shownTasks = onlyPending
+    ? tasks.flatMap((task) => {
+        if (task.subtasks.length === 0) {
+          return task.done ? [] : [task];
+        }
+
+        const pendingSubtasks = task.subtasks.filter((subtask) => !subtask.done);
+        return pendingSubtasks.length ? [{ ...task, subtasks: pendingSubtasks }] : [];
+      })
+    : tasks;
 
   const patchItem = useCallback(
     (itemId: string, values: Partial<Pick<ChecklistItem, "name" | "done" | "notes">>) =>
@@ -202,15 +214,22 @@ export function ChecklistEditor({ company, closing, initialItems }: ChecklistEdi
   function moveButtons(siblings: ChecklistItem[], index: number, label: string) {
     return (
       <>
-        <button aria-label={`Subir ${label}`} className="tk-row-button" disabled={index === 0} onClick={() => move(siblings, index, -1)} title="Subir" type="button">
+        <button
+          aria-label={`Subir ${label}`}
+          className="tk-row-button"
+          disabled={onlyPending || index === 0}
+          onClick={() => move(siblings, index, -1)}
+          title={onlyPending ? "Quita el filtro para ordenar" : "Subir"}
+          type="button"
+        >
           <ArrowUp size={14} />
         </button>
         <button
           aria-label={`Bajar ${label}`}
           className="tk-row-button"
-          disabled={index === siblings.length - 1}
+          disabled={onlyPending || index === siblings.length - 1}
           onClick={() => move(siblings, index, 1)}
-          title="Bajar"
+          title={onlyPending ? "Quita el filtro para ordenar" : "Bajar"}
           type="button"
         >
           <ArrowDown size={14} />
@@ -258,6 +277,15 @@ export function ChecklistEditor({ company, closing, initialItems }: ChecklistEdi
         >
           <span style={{ width: progress.total ? `${(progress.done / progress.total) * 100}%` : 0 }} />
         </div>
+        <button
+          aria-pressed={onlyPending}
+          className={`button secondary tk-filter ${onlyPending ? "active" : ""}`}
+          onClick={() => setOnlyPending((value) => !value)}
+          type="button"
+        >
+          <ListFilter size={16} />
+          Solo pendientes
+        </button>
       </div>
 
       <section className="panel tk-checklist-panel">
@@ -277,14 +305,14 @@ export function ChecklistEditor({ company, closing, initialItems }: ChecklistEdi
                 <th>Observaciones</th>
               </tr>
             </thead>
-            {tasks.map((task, taskIndex) => {
+            {shownTasks.map((task, taskIndex) => {
               const taskLabel = task.name.trim() || "tarea sin nombre";
               const taskCell = (
                 <td className="tk-col-task" rowSpan={Math.max(1, task.subtasks.length)}>
                   <div className="tk-cell">
                     {nameField(task, "Nombre de la tarea", `Tarea ${taskIndex + 1}`)}
                     <div className="tk-row-actions">
-                      {moveButtons(tasks, taskIndex, taskLabel)}
+                      {moveButtons(shownTasks, taskIndex, taskLabel)}
                       <button
                         aria-label={`Añadir subtarea a ${taskLabel}`}
                         className="tk-row-button"
@@ -356,9 +384,11 @@ export function ChecklistEditor({ company, closing, initialItems }: ChecklistEdi
           </table>
         </div>
 
-        {tasks.length === 0 ? (
+        {shownTasks.length === 0 ? (
           <div className="panel-body">
-            <div className="message">El checklist está vacío. Añade la primera tarea.</div>
+            <div className={`message ${tasks.length ? "ok" : ""}`}>
+              {tasks.length ? "No queda nada pendiente: todo está realizado." : "El checklist está vacío. Añade la primera tarea."}
+            </div>
           </div>
         ) : null}
 
