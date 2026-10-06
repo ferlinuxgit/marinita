@@ -12,7 +12,8 @@ Aplicacion Next.js de herramientas internas, organizada en modulos independiente
 - Una tarea repetida es una serie; el estado de cada aparicion (realizada, eliminada o editada) se guarda aparte, por lo que completar una no afecta a las demas. "Esta y las siguientes" cierra la serie original el dia anterior y crea otra nueva, conservando el historial.
 - Repeticion mensual en dia 29, 30 o 31: en los meses sin ese dia se usa el ultimo dia del mes.
 - Las empresas, los cierres y las tareas pertenecen al usuario que los crea, igual que los informes de gastos.
-- Los checklists, la lista de tareas y las fichas de datos se guardan automaticamente. Copiar un cierre copia la estructura (tareas, subtareas y orden) sin marcas ni observaciones.
+- Los checklists, la lista de tareas y las fichas de datos se guardan automaticamente.
+- Datos se puede exportar a Excel (todo o una ficha) e importar desde Excel: cada hoja es un dato (titulo en A1, descripcion en A2 y bloques marcados con TEXTO o TABLA). Hay un Excel de ejemplo descargable desde el dialogo de importacion, y un Excel exportado se puede volver a importar. Copiar un cierre copia la estructura (tareas, subtareas y orden) sin marcas ni observaciones.
 
 ## Stack
 

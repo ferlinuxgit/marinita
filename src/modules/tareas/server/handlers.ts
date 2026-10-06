@@ -1,14 +1,22 @@
 import "server-only";
 
+import { randomUUID } from "node:crypto";
+
 import { NextResponse } from "next/server";
 
 import { UserFacingError } from "@/core/http/errors";
 import { withUser } from "@/core/http/handler";
+import { xlsxResponse } from "@/core/http/responses";
+import { readUploadedFile } from "@/core/http/upload";
 import { tareasConfig } from "@/modules/tareas/config";
+import { contentSummary, dataBlocksSchema } from "@/modules/tareas/lib/data-blocks";
+import { parseDataWorkbook } from "@/modules/tareas/lib/data-import";
+import { buildDataTemplate, buildDataWorkbook } from "@/modules/tareas/lib/data-workbook";
 import { diffDays } from "@/modules/tareas/lib/dates";
 import {
   closingCreateSchema,
-  dataEntryCreateSchema,
+  dataEntryNewSchema,
+  dataImportOptionsSchema,
   dataEntryUpdateSchema,
   dayOrderSchema,
   editScopeSchema,
@@ -48,6 +56,8 @@ import {
 } from "@/modules/tareas/server/tasks-repository";
 import {
   createDataEntry,
+  dataEntryIdsByTitle,
+  importDataEntries,
   deleteDataEntry,
   getDataEntry,
   listDataEntries,
@@ -210,8 +220,62 @@ export const listDataHandler = withUser(async ({ user }) => {
 });
 
 export const createDataHandler = withUser(async ({ request, user }) => {
-  const { title, description } = dataEntryCreateSchema.parse(await readJson(request));
-  return NextResponse.json(await createDataEntry(user.id, title, description), { status: 201 });
+  const { title, description, blocks } = dataEntryNewSchema.parse(await readJson(request));
+  return NextResponse.json(await createDataEntry(user.id, title, description, blocks), { status: 201 });
+});
+
+export const dataTemplateHandler = withUser(async () => {
+  return xlsxResponse(await buildDataTemplate(), "Ejemplo importación datos.xlsx");
+});
+
+/**
+ * Import from Excel in two steps: `mode=preview` returns what would be imported (and which titles
+ * already exist); `mode=apply` saves it, updating or duplicating existing titles.
+ */
+export const importDataHandler = withUser(async ({ request, user }) => {
+  const file = await readUploadedFile(request, {
+    extensions: [".xlsx"],
+    maxBytes: 5 * 1024 * 1024,
+    label: "un archivo .xlsx",
+  });
+  const { mode, duplicates } = dataImportOptionsSchema.parse({
+    mode: file.form.get("mode") ?? undefined,
+    duplicates: file.form.get("duplicates") ?? undefined,
+  });
+  const parsed = await parseDataWorkbook(file.buffer, randomUUID);
+  const entries = parsed.entries.map((entry) => ({ ...entry, blocks: dataBlocksSchema.parse(entry.blocks) }));
+
+  if (entries.length === 0) {
+    throw new UserFacingError("No se ha encontrado ningún dato en el Excel. Descarga el ejemplo para ver el formato.");
+  }
+
+  if (mode === "apply") {
+    return NextResponse.json(await importDataEntries(user.id, entries, duplicates));
+  }
+
+  const existing = await dataEntryIdsByTitle(user.id);
+
+  return NextResponse.json({
+    entries: entries.map((entry) => ({
+      sheet: entry.sheet,
+      title: entry.title,
+      description: entry.description,
+      summary: contentSummary(entry.blocks),
+      exists: existing.has(entry.title.trim().toLocaleLowerCase("es")),
+    })),
+    ignored: parsed.ignored,
+    warnings: parsed.warnings,
+  });
+});
+
+export const exportAllDataHandler = withUser(async ({ user }) => {
+  const workbook = await buildDataWorkbook(await listDataEntries(user.id));
+  return xlsxResponse(workbook, "Datos.xlsx");
+});
+
+export const exportDataHandler = withUser<{ entryId: string }>(async ({ user, params }) => {
+  const entry = await getDataEntry(user.id, params.entryId);
+  return xlsxResponse(await buildDataWorkbook([entry]), `${entry.title}.xlsx`);
 });
 
 export const getDataHandler = withUser<{ entryId: string }>(async ({ user, params }) => {

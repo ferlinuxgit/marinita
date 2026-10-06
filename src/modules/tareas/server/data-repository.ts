@@ -47,9 +47,9 @@ export async function getDataEntry(userId: string, entryId: string): Promise<Dat
   return entry;
 }
 
-export async function createDataEntry(userId: string, title: string, description: string) {
+export async function createDataEntry(userId: string, title: string, description: string, blocks: DataBlock[] = []) {
   const id = randomUUID();
-  await db.insert(tareasDataEntries).values({ id, userId, title, description, blocks: [] });
+  await db.insert(tareasDataEntries).values({ id, userId, title, description, blocks });
   return { id };
 }
 
@@ -67,6 +67,48 @@ export async function updateDataEntry(
   if (updated.length === 0) {
     throw new NotFoundError("Dato no encontrado.");
   }
+}
+
+/** Lower-cased, trimmed title → id of the user's existing sheets. */
+export async function dataEntryIdsByTitle(userId: string) {
+  const rows = await db
+    .select({ id: tareasDataEntries.id, title: tareasDataEntries.title })
+    .from(tareasDataEntries)
+    .where(eq(tareasDataEntries.userId, userId));
+  return new Map(rows.map((row) => [row.title.trim().toLocaleLowerCase("es"), row.id]));
+}
+
+/**
+ * Saves imported sheets. With `duplicates = "update"`, a sheet whose title matches an existing one
+ * replaces its description and content; otherwise a new sheet is always created.
+ */
+export async function importDataEntries(
+  userId: string,
+  entries: { title: string; description: string; blocks: DataBlock[] }[],
+  duplicates: "update" | "create",
+) {
+  const existing = await dataEntryIdsByTitle(userId);
+  let created = 0;
+  let updated = 0;
+
+  await db.transaction(async (tx) => {
+    for (const entry of entries) {
+      const existingId = duplicates === "update" ? existing.get(entry.title.trim().toLocaleLowerCase("es")) : undefined;
+
+      if (existingId) {
+        await tx
+          .update(tareasDataEntries)
+          .set({ description: entry.description, blocks: entry.blocks, updatedAt: new Date() })
+          .where(owned(userId, existingId));
+        updated += 1;
+      } else {
+        await tx.insert(tareasDataEntries).values({ id: randomUUID(), userId, ...entry });
+        created += 1;
+      }
+    }
+  });
+
+  return { created, updated };
 }
 
 export async function deleteDataEntry(userId: string, entryId: string) {

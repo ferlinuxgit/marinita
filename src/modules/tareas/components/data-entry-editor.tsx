@@ -1,6 +1,6 @@
 "use client";
 
-import { ArrowDown, ArrowUp, ChevronRight, Columns3, Plus, Rows3, Table2, Trash2, Type, X } from "lucide-react";
+import { AlignLeft, ArrowDown, ArrowUp, ChevronRight, ClipboardPaste, Download, Plus, Table2, Trash2, X } from "lucide-react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,8 +13,11 @@ import { tareasConfig } from "@/modules/tareas/config";
 import {
   addTableColumn,
   addTableRow,
+  DATA_LIMITS,
   newTableBlock,
   newTextBlock,
+  parseClipboardGrid,
+  pasteIntoTable,
   removeTableColumn,
   removeTableRow,
   setTableCell,
@@ -30,6 +33,11 @@ type DataEntryEditorProps = {
   entry: EntryDoc & { id: string };
 };
 
+/** Text or table cells, ignoring column names (a new table may already have them). */
+function hasBodyContent(block: DataBlock) {
+  return block.type === "text" ? block.text.trim() !== "" : block.rows.flat().some((cell) => cell.trim());
+}
+
 function hasContent(block: DataBlock) {
   return block.type === "text" ? block.text.trim() !== "" : [...block.columns, ...block.rows.flat()].some((cell) => cell.trim());
 }
@@ -37,7 +45,10 @@ function hasContent(block: DataBlock) {
 export function DataEntryEditor({ entry }: DataEntryEditorProps) {
   const router = useRouter();
   const [doc, setDoc] = useState<EntryDoc>({ title: entry.title, description: entry.description, blocks: entry.blocks });
-  const [focusBlockId, setFocusBlockId] = useState<string | null>(null);
+  // A sheet just created from the dialog has empty blocks: start typing in the first one.
+  const [focusBlockId, setFocusBlockId] = useState<string | null>(() =>
+    entry.blocks.length && !entry.blocks.some(hasBodyContent) ? entry.blocks[0].id : null,
+  );
   const { enqueue, schedule, flush, isSaving, hasSaved, error, setError } = useSaveQueue();
 
   /** Applies a change and schedules saving the whole sheet (the latest version wins). */
@@ -107,55 +118,53 @@ export function DataEntryEditor({ entry }: DataEntryEditorProps) {
   }
 
   return (
-    <div className="grid">
+    <div className="grid tk-data-page">
       <nav className="tk-breadcrumb" aria-label="Ruta">
         <Link href={tareasRoutes.data}>Datos</Link>
         <ChevronRight size={14} />
         <span>{doc.title || "Sin título"}</span>
       </nav>
 
-      <div className="tk-checklist-header">
-        <div className="tk-data-heading">
-          <input
-            aria-label="Título"
-            className="tk-cell-input tk-data-title"
-            maxLength={tareasConfig.limits.nameLength}
-            onBlur={() => flush("doc")}
-            onChange={(event) => change({ ...doc, title: event.target.value })}
-            placeholder="Título"
-            value={doc.title}
-          />
-          <input
-            aria-label="Descripción"
-            className="tk-cell-input tk-data-description"
-            maxLength={tareasConfig.limits.notesLength}
-            onBlur={() => flush("doc")}
-            onChange={(event) => change({ ...doc, description: event.target.value })}
-            placeholder="Descripción breve (opcional)"
-            value={doc.description}
-          />
-          {!doc.title.trim() ? <span className="message error">El título es obligatorio para guardar.</span> : null}
-        </div>
-        <div className="tk-checklist-meta">
+      <section className="tk-data-hero">
+        <input
+          aria-label="Título"
+          className="tk-cell-input tk-data-title"
+          maxLength={tareasConfig.limits.nameLength}
+          onBlur={() => flush("doc")}
+          onChange={(event) => change({ ...doc, title: event.target.value })}
+          placeholder="Título"
+          value={doc.title}
+        />
+        <input
+          aria-label="Descripción"
+          className="tk-cell-input tk-data-description"
+          maxLength={tareasConfig.limits.notesLength}
+          onBlur={() => flush("doc")}
+          onChange={(event) => change({ ...doc, description: event.target.value })}
+          placeholder="Añade una descripción breve (opcional)"
+          value={doc.description}
+        />
+        {!doc.title.trim() ? <span className="message error">El título es obligatorio para guardar.</span> : null}
+        <div className="tk-data-hero-actions">
           <SaveStatus error={error} hasSaved={hasSaved} isSaving={isSaving} />
+          <a className="button secondary" download href={tareasApi.dataExport(entry.id)} onClick={() => flush("doc")}>
+            <Download size={16} />
+            Exportar Excel
+          </a>
           <button className="button secondary tk-delete" onClick={deleteEntry} type="button">
             <Trash2 size={16} />
             Eliminar
           </button>
         </div>
-      </div>
+      </section>
 
       <SaveErrorBanner error={error} />
-
-      {doc.blocks.length === 0 ? (
-        <div className="message">Añade texto o una tabla para empezar.</div>
-      ) : null}
 
       {doc.blocks.map((block, index) => (
         <section className="panel tk-block" key={block.id}>
           <div className="tk-block-toolbar">
             <span className="tk-block-type">
-              {block.type === "text" ? <Type size={14} /> : <Table2 size={14} />}
+              {block.type === "text" ? <AlignLeft size={14} /> : <Table2 size={14} />}
               {block.type === "text" ? "Texto" : "Tabla"}
             </span>
             <div className="tk-row-actions">
@@ -185,7 +194,7 @@ export function DataEntryEditor({ entry }: DataEntryEditorProps) {
               className="tk-cell-input tk-data-text"
               onBlur={() => flush("doc")}
               onChange={(event) => updateBlock(block.id, (current) => ({ ...current, text: event.target.value }))}
-              placeholder="Escribe aquí…"
+              placeholder="Escribe aquí la explicación, los pasos a seguir, notas…"
               value={block.text}
             />
           ) : (
@@ -199,16 +208,21 @@ export function DataEntryEditor({ entry }: DataEntryEditorProps) {
         </section>
       ))}
 
-      <div className="tk-block-add">
-        <button className="button secondary" onClick={() => addBlock("text")} type="button">
-          <Plus size={16} />
-          <Type size={16} />
-          Texto
+      <div className={`tk-block-add ${doc.blocks.length === 0 ? "empty" : ""}`}>
+        <span>{doc.blocks.length === 0 ? "Empieza añadiendo contenido:" : "Añadir"}</span>
+        <button className="tk-add-choice" onClick={() => addBlock("text")} type="button">
+          <AlignLeft size={18} />
+          <span>
+            <strong>Texto</strong>
+            <small>Explicaciones y notas</small>
+          </span>
         </button>
-        <button className="button secondary" onClick={() => addBlock("table")} type="button">
-          <Plus size={16} />
-          <Table2 size={16} />
-          Tabla
+        <button className="tk-add-choice" onClick={() => addBlock("table")} type="button">
+          <Table2 size={18} />
+          <span>
+            <strong>Tabla</strong>
+            <small>Listados con columnas</small>
+          </span>
         </button>
       </div>
     </div>
@@ -223,6 +237,19 @@ type TableEditorProps = {
 };
 
 function TableEditor({ table, autoFocus, onChange, onBlur }: TableEditorProps) {
+  // New tables start on the header; tables created with column names start on the first cell.
+  const focusHeader = autoFocus && !table.columns[0];
+
+  /** Pasting several cells copied from Excel fills the table from that cell. */
+  function onPaste(event: React.ClipboardEvent<HTMLTextAreaElement>, row: number, column: number) {
+    const grid = parseClipboardGrid(event.clipboardData.getData("text/plain"));
+
+    if (grid) {
+      event.preventDefault();
+      onChange((current) => pasteIntoTable(current, row, column, grid), true);
+    }
+  }
+
   return (
     <>
       <div className="table-wrap">
@@ -234,10 +261,11 @@ function TableEditor({ table, autoFocus, onChange, onBlur }: TableEditorProps) {
                   <div className="tk-cell">
                     <AutoTextarea
                       aria-label={`Columna ${columnIndex + 1}`}
-                      autoFocus={autoFocus && columnIndex === 0}
+                      autoFocus={focusHeader && columnIndex === 0}
                       className="tk-cell-input"
                       onBlur={onBlur}
                       onChange={(event) => onChange((current) => setTableHeader(current, columnIndex, event.target.value.replace(/\n/g, " ")))}
+                      onPaste={(event) => onPaste(event, -1, columnIndex)}
                       placeholder={`Columna ${columnIndex + 1}`}
                       singleLine
                       value={column}
@@ -262,7 +290,19 @@ function TableEditor({ table, autoFocus, onChange, onBlur }: TableEditorProps) {
                   </div>
                 </th>
               ))}
-              <th aria-hidden="true" className="tk-data-actions-col" />
+              <th className="tk-data-actions-col">
+                {table.columns.length < DATA_LIMITS.columns ? (
+                  <button
+                    aria-label="Añadir columna"
+                    className="tk-row-button tk-add-column"
+                    onClick={() => onChange(addTableColumn, true)}
+                    title="Añadir columna"
+                    type="button"
+                  >
+                    <Plus size={15} />
+                  </button>
+                ) : null}
+              </th>
             </tr>
           </thead>
           <tbody>
@@ -272,9 +312,11 @@ function TableEditor({ table, autoFocus, onChange, onBlur }: TableEditorProps) {
                   <td key={columnIndex}>
                     <AutoTextarea
                       aria-label={`Fila ${rowIndex + 1}, ${table.columns[columnIndex] || `columna ${columnIndex + 1}`}`}
+                      autoFocus={autoFocus && !focusHeader && rowIndex === 0 && columnIndex === 0}
                       className="tk-cell-input"
                       onBlur={onBlur}
                       onChange={(event) => onChange((current) => setTableCell(current, rowIndex, columnIndex, event.target.value))}
+                      onPaste={(event) => onPaste(event, rowIndex, columnIndex)}
                       value={cell}
                     />
                   </td>
@@ -296,12 +338,13 @@ function TableEditor({ table, autoFocus, onChange, onBlur }: TableEditorProps) {
         </table>
       </div>
       <div className="tk-block-footer">
-        <button className="tk-link-button" onClick={() => onChange(addTableRow, true)} type="button">
-          <Rows3 size={14} /> Añadir fila
+        <button className="tk-add-row" onClick={() => onChange(addTableRow, true)} type="button">
+          <Plus size={15} /> Añadir fila
         </button>
-        <button className="tk-link-button" onClick={() => onChange(addTableColumn, true)} type="button">
-          <Columns3 size={14} /> Añadir columna
-        </button>
+        <span className="tk-paste-hint">
+          <ClipboardPaste aria-hidden="true" size={13} />
+          Puedes pegar celdas copiadas de Excel
+        </span>
       </div>
     </>
   );

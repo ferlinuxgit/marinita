@@ -16,6 +16,8 @@ export type UploadedFile = {
   name: string;
   size: number;
   buffer: Buffer;
+  /** The whole form, to read other fields sent with the file. */
+  form: FormData;
 };
 
 export async function readUploadedFile(request: Request, rules: UploadRules): Promise<UploadedFile> {
@@ -50,5 +52,6 @@ export async function readUploadedFile(request: Request, rules: UploadRules): Pr
     name: file.name,
     size: file.size,
     buffer: Buffer.from(await file.arrayBuffer()),
+    form: formData,
   };
 }

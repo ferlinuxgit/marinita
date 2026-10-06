@@ -114,3 +114,13 @@ export const dataEntryCreateSchema = z.object({
 export const dataEntryUpdateSchema = dataEntryCreateSchema.extend({
   blocks: dataBlocksSchema,
 });
+
+export const dataImportOptionsSchema = z.object({
+  mode: z.enum(["preview", "apply"]).default("preview"),
+  duplicates: z.enum(["update", "create"]).default("update"),
+});
+
+/** Creation may include the first blocks (chosen in the "new sheet" dialog). */
+export const dataEntryNewSchema = dataEntryCreateSchema.extend({
+  blocks: dataBlocksSchema.default([]),
+});
