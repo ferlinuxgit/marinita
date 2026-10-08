@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ListChecks, Loader2, Repeat, Trash2, Users } from "lucide-react";
+import { Check, CircleAlert, ListChecks, Loader2, Repeat, Trash2, Users } from "lucide-react";
 import { FormEvent, useState } from "react";
 
 import { errorMessage, fetchJson } from "@/core/ui/api-client";
@@ -24,6 +24,7 @@ type RepeatMode = "none" | "daily" | "weekly" | "monthly" | "custom";
 
 type FormState = {
   kind: TaskKind;
+  important: boolean;
   /** "HH:MM" or "" (meetings only). */
   time: string;
   title: string;
@@ -51,6 +52,7 @@ function initialForm(target: TaskDialogTarget): FormState {
   if (target.mode === "create") {
     return {
       kind: "task",
+      important: false,
       time: "",
       title: "",
       date: target.date,
@@ -72,6 +74,7 @@ function initialForm(target: TaskDialogTarget): FormState {
 
   return {
     kind: occurrence.kind,
+    important: occurrence.important,
     time: occurrence.time ?? "",
     title: occurrence.title,
     date: occurrence.date,
@@ -101,9 +104,10 @@ function toRecurrence(form: FormState): Recurrence | null {
 }
 
 function repetitionKey(form: FormState) {
-  // The kind belongs to the whole series, like the repetition settings.
+  // Kind and importance belong to the whole series, like the repetition settings.
   return JSON.stringify([
     form.kind,
+    form.important,
     form.repeat === "none" ? null : toRecurrence({ ...form, date: "2000-01-03" }),
     form.repeat === "none" ? "" : form.until,
   ]);
@@ -146,6 +150,7 @@ export function TaskDialog({ target, onClose, onChanged }: TaskDialogProps) {
   function taskPayload() {
     return {
       kind: form.kind,
+      important: form.important,
       time: form.kind === "meeting" && form.time ? form.time : null,
       title: form.title.trim(),
       date: form.date,
@@ -294,7 +299,7 @@ export function TaskDialog({ target, onClose, onChanged }: TaskDialogProps) {
                   />
                   <span>
                     {option.label}
-                    {disabled ? <small>El tipo y la repetición solo se pueden cambiar para varias apariciones.</small> : null}
+                    {disabled ? <small>El tipo, la importancia y la repetición solo se pueden cambiar para varias apariciones.</small> : null}
                   </span>
                 </label>
               );
@@ -363,6 +368,20 @@ export function TaskDialog({ target, onClose, onChanged }: TaskDialogProps) {
             value={form.title}
           />
         </div>
+
+        <button
+          aria-pressed={form.important}
+          className={`tk-important-toggle ${form.important ? "on" : ""}`}
+          onClick={() => update("important", !form.important)}
+          type="button"
+        >
+          <CircleAlert aria-hidden="true" size={18} />
+          <span>
+            <strong>Muy importante</strong>
+            <small>Se verá destacada en rojo en el calendario</small>
+          </span>
+          <span aria-hidden="true" className="tk-switch" />
+        </button>
 
         <div className="tk-form-row">
           <div className="field">

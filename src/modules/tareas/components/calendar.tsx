@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, ChevronLeft, ChevronRight, GripVertical, Loader2, Plus, Repeat, Users } from "lucide-react";
+import { Check, ChevronLeft, ChevronRight, CircleAlert, GripVertical, Loader2, Plus, Repeat, Users } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { errorMessage, fetchJson } from "@/core/ui/api-client";
@@ -172,13 +172,14 @@ function DayCell({ day, label, tasks, isToday, outside, togglingKey, onCreate, o
           return (
             <li data-key={key} key={key} style={itemStyle(index)}>
               <div
-                className={`tk-task ${occurrence.kind === "meeting" ? "meeting" : ""} ${occurrence.done ? "done" : ""} ${occurrence.color || occurrence.kind === "meeting" ? "colored" : ""} ${drag?.from === index ? "is-dragged" : ""} ${canReorder ? "sortable" : ""}`}
+                className={`tk-task ${occurrence.kind === "meeting" ? "meeting" : ""} ${occurrence.important ? "important" : ""} ${occurrence.done ? "done" : ""} ${occurrence.color || occurrence.kind === "meeting" ? "colored" : ""} ${drag?.from === index ? "is-dragged" : ""} ${canReorder ? "sortable" : ""}`}
                 style={
                   occurrence.color || occurrence.kind === "meeting"
                     ? ({ "--tk-color": occurrence.color ?? MEETING_COLOR } as React.CSSProperties)
                     : undefined
                 }
                 title={[
+                  occurrence.important ? "¡Muy importante!" : null,
                   occurrence.kind === "meeting" ? `Reunión${occurrence.time ? ` · ${occurrence.time}` : ""}` : null,
                   occurrence.title,
                   occurrence.notes ? `\n${occurrence.notes}` : null,
@@ -230,6 +231,9 @@ function DayCell({ day, label, tasks, isToday, outside, togglingKey, onCreate, o
                   }}
                   type="button"
                 >
+                  {occurrence.important ? (
+                    <CircleAlert aria-label="Muy importante" className="tk-important-icon" size={14} strokeWidth={2.75} />
+                  ) : null}
                   {occurrence.kind === "meeting" ? (
                     <>
                       <span className="tk-meeting-meta">
@@ -239,7 +243,7 @@ function DayCell({ day, label, tasks, isToday, outside, togglingKey, onCreate, o
                       <span className="tk-meeting-title">{occurrence.title}</span>
                     </>
                   ) : (
-                    occurrence.title
+                    <span className="tk-task-text">{occurrence.title}</span>
                   )}
                 </button>
                 {occurrence.recurrence ? <Repeat aria-label="Se repite" className="tk-task-repeat" size={11} /> : null}

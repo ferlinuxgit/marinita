@@ -36,6 +36,8 @@ export const tareasTasks = pgTable(
     kind: text("kind").$type<TaskKind>().notNull().default("task"),
     /** Optional start time ("HH:MM"), used by meetings. */
     time: text("time"),
+    /** Very important: drawn with a red exclamation and bold red title. */
+    important: boolean("important").notNull().default(false),
     date: date("date", { mode: "string" }).notNull(),
     recurrence: jsonb("recurrence").$type<Recurrence>(),
     untilDate: date("untilDate", { mode: "string" }),

@@ -18,6 +18,7 @@ const weeklyMonday: TaskRecord = {
   color: "#2563eb",
   kind: "task",
   time: null,
+  important: false,
   date: "2026-10-05",
   until: null,
   recurrence: { freq: "weekly", interval: 1, weekdays: [0], monthDay: null },

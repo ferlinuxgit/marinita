@@ -1975,3 +1975,129 @@ table.tk-data-table {
     display: none;
   }
 }
+
+/* --- Very important tasks ------------------------------------------------------------------- */
+
+.tk-task.important {
+  border: 1px solid #f3a9a2;
+  border-left: 4px solid #dc2626;
+  background: #fff1f0;
+}
+
+.tk-task.important .tk-task-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #b91c1c;
+  font-weight: 800;
+}
+
+.tk-task.important.meeting .tk-task-title {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  column-gap: 5px;
+}
+
+.tk-task.important.meeting .tk-important-icon {
+  grid-row: span 2;
+  align-self: center;
+}
+
+.tk-task.important .tk-meeting-title,
+.tk-task.important .tk-meeting-meta {
+  color: #b91c1c;
+}
+
+.tk-important-icon {
+  flex: none;
+  color: #dc2626;
+}
+
+.tk-task-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (max-width: 720px) {
+  .tk-task-text {
+    white-space: normal;
+  }
+}
+
+.tk-task.important.done {
+  opacity: 0.55;
+}
+
+.tk-task.important.done .tk-task-title {
+  color: var(--muted);
+}
+
+/* Form toggle */
+
+.tk-important-toggle {
+  width: 100%;
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: var(--muted);
+  background: var(--surface);
+  text-align: left;
+}
+
+.tk-important-toggle span:not(.tk-switch) {
+  flex: 1;
+  display: grid;
+}
+
+.tk-important-toggle strong {
+  color: var(--foreground);
+}
+
+.tk-important-toggle small {
+  font-size: 12px;
+}
+
+.tk-important-toggle.on {
+  border-color: #dc2626;
+  color: #dc2626;
+  background: #fff1f0;
+}
+
+.tk-important-toggle.on strong {
+  color: #b91c1c;
+}
+
+.tk-switch {
+  position: relative;
+  width: 36px;
+  height: 20px;
+  flex: none;
+  border-radius: 999px;
+  background: #cfd7d0;
+  transition: background 0.15s ease;
+}
+
+.tk-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: white;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  transition: transform 0.15s ease;
+}
+
+.tk-important-toggle.on .tk-switch {
+  background: #dc2626;
+}
+
+.tk-important-toggle.on .tk-switch::after {
+  transform: translateX(16px);
+}

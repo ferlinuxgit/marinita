@@ -1,0 +1,1 @@
+ALTER TABLE "tareas_tasks" ADD COLUMN "important" boolean DEFAULT false NOT NULL;

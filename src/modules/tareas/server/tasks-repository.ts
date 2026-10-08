@@ -23,6 +23,7 @@ function toRecord(row: TaskRow): TaskRecord {
     color: row.color,
     kind: row.kind,
     time: row.time,
+    important: row.important,
     date: row.date,
     until: row.untilDate,
     recurrence: row.recurrence,
@@ -44,6 +45,7 @@ function taskValues(input: TaskInput, start: IsoDate) {
     notes: input.notes,
     color: input.color,
     kind: input.kind,
+    important: input.important,
     // Only meetings have a time.
     time: input.kind === "meeting" ? input.time : null,
     date: start,

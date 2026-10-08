@@ -28,6 +28,7 @@ export const taskInputSchema = z
     notes: z.string().max(limits.notesLength).default(""),
     color: colorSchema.default(null),
     kind: z.enum(["task", "meeting"]).default("task"),
+    important: z.boolean().default(false),
     time: z
       .string()
       .regex(/^([01]\d|2[0-3]):[0-5]\d$/, "Hora no válida.")

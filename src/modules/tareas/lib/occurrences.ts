@@ -12,6 +12,7 @@ export type TaskRecord = {
   kind: TaskKind;
   /** "HH:MM" or null. */
   time: string | null;
+  important: boolean;
   date: IsoDate;
   until: IsoDate | null;
   recurrence: Recurrence | null;
@@ -46,6 +47,7 @@ export type Occurrence = {
   color: string | null;
   kind: TaskKind;
   time: string | null;
+  important: boolean;
   done: boolean;
   recurrence: Recurrence | null;
   seriesStart: IsoDate;
@@ -68,6 +70,7 @@ function toOccurrence(task: TaskRecord, occurrenceDate: IsoDate, exception?: Exc
     color: edited ? exception.color : task.color,
     kind: task.kind,
     time: edited ? exception.time : task.time,
+    important: task.important,
     done: task.recurrence ? (exception?.done ?? false) : task.done,
     recurrence: task.recurrence,
     seriesStart: task.date,
