@@ -284,8 +284,9 @@ export function Calendar({ today, initialView, initialAnchor, initialShowDone }:
   useEffect(() => {
     const params = new URLSearchParams({ view, date: anchor });
 
-    if (!showDone) {
-      params.set("done", "0");
+    // Done tasks are hidden by default; the URL only records when they are shown.
+    if (showDone) {
+      params.set("done", "1");
     }
 
     window.history.replaceState(window.history.state, "", `?${params}`);
